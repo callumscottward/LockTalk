@@ -1,0 +1,17 @@
+{% extends 'master.html' %}
+
+{% block title %}
+    LockTock
+{% endblock %}
+
+{% block content%}
+    <h1>Members</h1>
+
+    <ul>
+        {% for member in mymembers %}
+            <li><a href="details/{{ member.id }}">{{member.firstName}} {{member.lastName}} </a></li>
+        {% endfor %}
+    </ul>
+
+    <p><a href="/">HOME</a></p>
+{% endblock %}

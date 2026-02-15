@@ -3,6 +3,8 @@ from django.http import HttpResponse
 from django.template import loader
 from .models import Member
 
+#The views is where you first get your .html file reference but also do any data processing and analysis
+
 def main(request):
     template = loader.get_template('main.html')
     return HttpResponse(template.render())

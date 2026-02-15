@@ -4,6 +4,16 @@ This repository contains everything you need to get started with a **Django** pr
 
 ---
 
+## Useful Resources
+
+* Official Django Documentation: [https://docs.djangoproject.com/](https://docs.djangoproject.com/)
+* Django Tutorial (Beginner Friendly): [https://www.w3schools.com/django/](https://www.w3schools.com/django/)
+* Django REST Framework: [https://www.django-rest-framework.org/](https://www.django-rest-framework.org/)
+* Django Packages: [https://djangopackages.org/](https://djangopackages.org/)
+* Mozilla Django Tutorial: [https://developer.mozilla.org/en-US/docs/Learn/Server-side/Django](https://developer.mozilla.org/en-US/docs/Learn/Server-side/Django)
+
+---
+
 ## Requirements
 
 Before starting, make sure you have the following installed:
@@ -287,16 +297,6 @@ python manage.py test
 ```bash
 python manage.py collectstatic
 ```
-
----
-
-## Useful Resources
-
-* Official Django Documentation: [https://docs.djangoproject.com/](https://docs.djangoproject.com/)
-* Django Tutorial (Beginner Friendly): [https://www.w3schools.com/django/](https://www.w3schools.com/django/)
-* Django REST Framework: [https://www.django-rest-framework.org/](https://www.django-rest-framework.org/)
-* Django Packages: [https://djangopackages.org/](https://djangopackages.org/)
-* Mozilla Django Tutorial: [https://developer.mozilla.org/en-US/docs/Learn/Server-side/Django](https://developer.mozilla.org/en-US/docs/Learn/Server-side/Django)
 
 ---
 

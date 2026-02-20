@@ -163,6 +163,11 @@ python manage.py makemigrations
 python manage.py migrate
 ```
 
+### Resolving Merge conflicts
+```
+python manage.py makemigrations --merge
+```
+
 ### Create a Superuser
 
 ```bash

@@ -1,5 +1,8 @@
-import './App.css'
-import { useEffect, useState } from 'react';
+import './App.css';
+import { Routes, Route } from 'react-router-dom';
+import Landing from './pages/Landing';
+import Login from './pages/Login';
+import Messages from './pages/Messages';
 
 function App() {
   // Below is what a sample API call might look like to Django once backend and frontend are more linked
@@ -12,14 +15,13 @@ function App() {
   // }, []);
 
   return (
-    <>
-      <h1>
-        Welcome to LockTalk!
-      </h1>
-      {/* <div>
-        {data}
-      </div> */}
-    </>
+    <div>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/messages" element={<Messages />} />
+      </Routes>
+    </div>
   )
 }
 

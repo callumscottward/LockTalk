@@ -43,7 +43,7 @@ def login_view(request):
         if user is not None:
             login(request, user)
             messages.success(request, f"Welcome back, {user.first_name}!")
-            return redirect("/")
+            return render(request, "main.html", {"user": user})
         else:
             messages.error(request, "Login failed. Invalid email or password.")
             return render(request, "login.html", {})
@@ -71,7 +71,8 @@ def register_view(request):
                 return render(request, "signup.html", {"form": form})
     else:
         form = CustomUserCreationForm()
-        return render(request, "signup.html", {"form": form})
+        
+    return render(request, "signup.html", {"form": form})
     
 # @never_cache
 def account_view(request):

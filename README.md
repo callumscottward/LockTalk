@@ -326,3 +326,12 @@ Specify your license here (MIT, GPL, etc.).
 ## Notes
 
 This README is designed to be a **complete Django quick-start and reference**. It can be used for coursework, personal projects, or production-ready applications.
+
+
+## Front-end
+Basic front-end setup for the pages:
+
+-Make sure to install node from nodejs.org, install the LTS version preferably, it will say LTS next to it
+-Once installed enter the frontend (cd frontend)
+then run 'nmp install'
+-From there you can run it with 'nmp run dev', and now it will host on a local server!

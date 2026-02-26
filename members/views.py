@@ -39,7 +39,7 @@ def login_view(request):
         email = request.POST["email"]
         password = request.POST["password"]
 
-        user = authenticate(request, email = email, password = password)
+        user = authenticate(request, username = email, password = password)
         if user is not None:
             login(request, user)
             messages.success(request, f"Welcome back, {user.first_name}!")
@@ -62,12 +62,13 @@ def register_view(request):
             user = form.save()
             email = form.cleaned_data["email"]
             password = form.cleaned_data["password1"]
-            user = authenticate(email=email, password=password)
+            user = authenticate(request, username=email, password=password)
             if user is not None:
                 login(request, user)
                 messages.success(request, f"Welcome {user.first_name}! Your account has been created successfully.")
                 return redirect("/")
-        else:
+            else:
+                messages.error(request, "Authentication failed after signup.")
             return render(request, "signup.html", {"form": form})
     else:
         form = CustomUserCreationForm()

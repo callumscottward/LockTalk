@@ -68,8 +68,7 @@ def register_view(request):
                 messages.success(request, f"Welcome {user.first_name}! Your account has been created successfully.")
                 return redirect("/")
             else:
-                messages.error(request, "Authentication failed after signup.")
-            return render(request, "signup.html", {"form": form})
+                return render(request, "signup.html", {"form": form})
     else:
         form = CustomUserCreationForm()
         return render(request, "signup.html", {"form": form})

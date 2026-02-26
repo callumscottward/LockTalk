@@ -1,7 +1,15 @@
-from django.shortcuts import render
 from django.http import HttpResponse
 from django.template import loader
+
 from .models import Member
+from django.shortcuts import render, redirect
+from django.contrib.auth.models import User
+from django.contrib.auth import authenticate, login, logout
+from django.contrib import messages
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.cache import never_cache
+from .forms import CustomUserCreationForm
 
 #The views is where you first get your .html file reference but also do any data processing and analysis
 
@@ -60,10 +68,10 @@ def register_view(request):
                 messages.success(request, f"Welcome {user.first_name}! Your account has been created successfully.")
                 return redirect("/")
         else:
-            return render(request, "register.html", {"form": form})
+            return render(request, "signup.html", {"form": form})
     else:
         form = CustomUserCreationForm()
-        return render(request, "register.html", {"form": form})
+        return render(request, "signup.html", {"form": form})
     
 # @never_cache
 def account_view(request):

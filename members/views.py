@@ -28,16 +28,16 @@ def detail(request, id):
 
 def login_view(request):
     if request.method == "POST":
-        username = request.POST["username"]
+        email = request.POST["email"]
         password = request.POST["password"]
 
-        user = authenticate(request, username = username, password = password)
+        user = authenticate(request, email = email, password = password)
         if user is not None:
             login(request, user)
             messages.success(request, f"Welcome back, {user.first_name}!")
             return redirect("/")
         else:
-            messages.error(request, "Login failed. Invalid username or password.")
+            messages.error(request, "Login failed. Invalid email or password.")
             return render(request, "login.html", {})
     else:
         return render(request, 'login.html', {})
@@ -52,9 +52,9 @@ def register_view(request):
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            username = form.cleaned_data["username"]
+            email = form.cleaned_data["email"]
             password = form.cleaned_data["password1"]
-            user = authenticate(username=username, password=password)
+            user = authenticate(email=email, password=password)
             if user is not None:
                 login(request, user)
                 messages.success(request, f"Welcome {user.first_name}! Your account has been created successfully.")
@@ -65,8 +65,8 @@ def register_view(request):
         form = CustomUserCreationForm()
         return render(request, "register.html", {"form": form})
     
-@never_cache
+# @never_cache
 def account_view(request):
     # At this point, request.user is guaranteed to be authenticated
-    username = request.user.username
-    return render(request, 'account.html', {"username": username})
+    email = request.user.email
+    return render(request, 'account.html', {"email": email})

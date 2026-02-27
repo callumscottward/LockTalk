@@ -1,5 +1,7 @@
-import './App.css';
+import './App.css'
 import { Routes, Route } from 'react-router-dom';
+import Dashboard from './pages/Dashboard';
+import UserProfile from './pages/UserProfile';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Messages from './pages/Messages';
@@ -17,7 +19,9 @@ function App() {
   return (
     <div>
       <Routes>
-        <Route path="/" element={<Landing />} />
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/userProfile" element={<UserProfile />} />
         <Route path="/login" element={<Login />} />
         <Route path="/messages" element={<Messages />} />
       </Routes>

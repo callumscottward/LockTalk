@@ -22,3 +22,27 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment Variables (Just in case)
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+# Vite/Build specifics
+stats.html
+*.tsbuildinfo
+
+# Windows Thumbnails
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Testing
+/coverage
+/.nyc_output
+
+# Temporary folders
+.temp
+.tmp

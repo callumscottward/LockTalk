@@ -1,7 +1,6 @@
 from django.http import HttpResponse
 from django.template import loader
 
-from .models import Member
 from django.shortcuts import render, redirect
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
@@ -18,7 +17,7 @@ def main(request):
     return HttpResponse(template.render())
 
 def members(request):
-    mymembers = Member.objects.all().values()
+    mymembers = User.objects.all().values()
     template = loader.get_template('allMembers.html')
     context = {
         'mymembers': mymembers
@@ -27,7 +26,7 @@ def members(request):
 
 
 def detail(request, id):
-    member = Member.objects.get(id=id)
+    member = User.objects.get(id=id)
     template = loader.get_template('memberDetails.html')
     context = {
         'member': member

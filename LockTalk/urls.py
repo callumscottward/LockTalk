@@ -20,6 +20,7 @@ from django.urls import include, path
 # Will need to include the reference to the apps url. You can also make everything in a specific app have a specific directory 
 urlpatterns = [
     path('', include('members.urls')),
+    path('', include('message_system.urls')),
     path('', include('user_messages.urls')),
     path('admin/', admin.site.urls),
 ]

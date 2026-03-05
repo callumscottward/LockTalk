@@ -1,5 +1,6 @@
-from django.http import HttpResponse
-from django.template import loader
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
 
 from .models import Member
 from django.shortcuts import render, redirect
@@ -13,69 +14,88 @@ from .forms import CustomUserCreationForm
 
 #The views is where you first get your .html file reference but also do any data processing and analysis
 
-def main(request):
-    template = loader.get_template('main.html')
-    return HttpResponse(template.render())
-
-def members(request):
-    mymembers = Member.objects.all().values()
-    template = loader.get_template('allMembers.html')
-    context = {
-        'mymembers': mymembers
-    }
-    return HttpResponse(template.render(context, request))
+@csrf_exempt
+def members_api(request):
+    members = list(Member.objects.all().values())
+    return JsonResponse(members)
 
 
-def detail(request, id):
+@csrf_exempt
+def member_detail_api(request, id):
     member = Member.objects.get(id=id)
-    template = loader.get_template('memberDetails.html')
-    context = {
-        'member': member
+    
+    data = {
+        "id": member.id,
+        "firstName": member.firstName,
+        "lastName": member.lastName,
     }
-    return HttpResponse(template.render(context, request))
 
-def login_view(request):
+    return JsonResponse(data)
+
+@csrf_exempt
+def login_api(request):
     if request.method == "POST":
-        email = request.POST["email"]
-        password = request.POST["password"]
+        data = json.loads(request.body)
+        email = data.get("email")
+        password = data.get("password")
 
         user = authenticate(request, username = email, password = password)
+
         if user is not None:
             login(request, user)
-            messages.success(request, f"Welcome back, {user.first_name}!")
-            return render(request, "main.html", {"user": user})
+            return JsonResponse({
+                "success": True,
+                "message": f"Welcome back, {user.first_name}!",
+                "user": {
+                    "email": user.email,
+                    "first_name": user.first_name,
+                }
+            })
         else:
-            messages.error(request, "Login failed. Invalid email or password.")
-            return render(request, "login.html", {})
-    else:
-        return render(request, 'login.html', {})
+            return JsonResponse({
+                "success": False,
+                "message": "Invalid email or password."
+            }, status=400)
 
+@csrf_exempt
 def logout_view(request):
     logout(request)
-    messages.success(request, "You have been successfully logged out.")
-    return redirect("/")
+    return JsonResponse({"success": True})
 
-def register_view(request):
-    if request.method == "POST":
-        form = CustomUserCreationForm(request.POST)
-        if form.is_valid():
-            user = form.save()
-            email = form.cleaned_data["email"]
-            password = form.cleaned_data["password1"]
-            user = authenticate(request, username=email, password=password)
-            if user is not None:
-                login(request, user)
-                messages.success(request, f"Welcome {user.first_name}! Your account has been created successfully.")
-                return redirect("/")
-            else:
-                return render(request, "signup.html", {"form": form})
-    else:
-        form = CustomUserCreationForm()
-        
-    return render(request, "signup.html", {"form": form})
-    
-# @never_cache
-def account_view(request):
-    # At this point, request.user is guaranteed to be authenticated
-    email = request.user.email
-    return render(request, 'account.html', {"email": email})
+@csrf_exempt
+def register_api(request):
+    if request.method != "POST":
+        return JsonResponse({"message": "Invalid request method"}, status=405)
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"message": "Invalid JSON"}, status=400)
+
+    form = CustomUserCreationForm(data)
+
+    if form.is_valid():
+        user = form.save()
+
+        email = form.cleaned_data["email"]
+        password = form.cleaned_data["password1"]
+
+        user = authenticate(request, username=email, password=password)
+
+        if user is not None:
+            login(request, user)
+
+            return JsonResponse({
+                "success": True,
+                "message": "Account created successfully"
+            })
+
+        return JsonResponse({
+            "success": False,
+            "message": "Authentication failed after registration"
+        }, status=400)
+
+    return JsonResponse({
+        "success": False,
+        "errors": form.errors
+    }, status=400)

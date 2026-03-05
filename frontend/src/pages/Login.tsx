@@ -1,20 +1,100 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
 
 function Login() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+
+  const handleSubmit = async (e: any) => {
+    e.preventDefault();
+
+    const response = await fetch("http://localhost:8000/api/login/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      setMessage(data.message);
+      window.location.href = "/dashboard";
+    } else {
+      setMessage(data.message);
+    }
+  };
+
   return (
-    <div>
-      <div>
-        <label htmlFor="email">Email:</label>
-        <input type="text" id="email" name="email" placeholder="user@email.com"></input>
+    <>
+      <h1>Welcome to LockTalk!</h1>
+      <div style={{ maxWidth: "500px", margin: "50px auto", padding: "20px" }}>
+        <h2>Login</h2>
+
+        {message && (
+          <div style={{ color: "red", marginBottom: "10px" }}>{message}</div>
+        )}
+
+        <form
+          onSubmit={handleSubmit}
+          style={{ display: "flex", flexDirection: "column", gap: "15px" }}
+        >
+          <div>
+            <label htmlFor="email">Email:</label>
+            <input
+              type="text"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px",
+                marginTop: "5px",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="password">Password:</label>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px",
+                marginTop: "5px",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
+
+          <button
+            type="submit"
+            style={{
+              padding: "10px",
+              backgroundColor: "#007bff",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontSize: "16px",
+            }}
+          >
+            Login
+          </button>
+        </form>
+
+        <p style={{ marginTop: "20px" }}>
+          <strong>Don't have an account?</strong>
+          <a href="/signup/"> Sign Up Now</a>
+        </p>
       </div>
-      <div>
-        <label htmlFor="password">Password:</label>
-        <input type="password" id="password" name="password" placeholder="Password"></input>
-      </div>
-      <button>
-        <Link to="/messages">Messages</Link>
-      </button>
-    </div>
+    </>
   );
 }
 

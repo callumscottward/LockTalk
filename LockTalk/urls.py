@@ -21,6 +21,5 @@ from django.urls import include, path
 urlpatterns = [
     path('', include('members.urls')),
     path('', include('message_system.urls')),
-    path('', include('user_messages.urls')),
     path('admin/', admin.site.urls),
 ]

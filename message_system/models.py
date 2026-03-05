@@ -2,11 +2,6 @@ from django.db import models
 from django.conf import settings
 import uuid
 
-import uuid
-from django.db import models
-from django.conf import settings
-
-
 class Conversation(models.Model):
     #Unique, randomly generated 128 but number that will be used to be more secure
     id = models.UUIDField(

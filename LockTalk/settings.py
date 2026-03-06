@@ -31,13 +31,14 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
 
 # Whenever you create an app, you will have to include it
 INSTALLED_APPS = [
+    'daphne',  # Must be first
     'corsheaders',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -47,6 +48,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'members',
     'rest_framework',
+    'channels',
     'user_messages',
 ]
 
@@ -95,8 +97,29 @@ TEMPLATES = [
     },
 ]
 
+# Standard stuff
 WSGI_APPLICATION = 'LockTalk.wsgi.application'
 
+# For Channels and Daphne
+ASGI_APPLICATION = 'LockTalk.asgi.application'
+
+USE_REDIS = True # Set to True when Docker is running
+
+# Used by default when redis is working
+if USE_REDIS:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {"hosts": [("127.0.0.1", 6379)]},
+        },
+    }
+# If Docker / redis isn't working, USE_REDIS can be set to fasle and the UI can be worked on here without needing it.
+else:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer"
+        },
+    }
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases

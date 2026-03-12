@@ -99,3 +99,19 @@ def register_api(request):
         "success": False,
         "errors": form.errors
     }, status=400)
+
+@csrf_exempt
+def current_user_api(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            "success": False,
+            "message": "User not authenticated"
+        }, status=401)
+
+    user = request.user
+
+    return JsonResponse({
+        "id": user.id,
+        "email": user.email,
+        "username": user.username
+    })

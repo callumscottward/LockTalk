@@ -99,3 +99,42 @@ To access and load into the GUI of LockTalk, visit:
 ```
 http://localhost:5173/
 ```
+
+# Setup: Running Redis with Docker
+To handle WebSockets (Django Channels), our project requires a Redis server. We use Docker to ensure everyone is running the same version.
+
+## 0.5 Updates
+Pull the changes. Before using Docker / redis, re-run:
+pip install -r requirements.txt
+
+It may fix any 'ModuleNotFound' stuff if that happens when pulling. Also do the migration commands.
+
+## 1. Docker Desktop Installation
+Install Docker: Download Docker Desktop for your OS. This can be through the Microsoft Store, or with this link: https://www.docker.com/products/docker-desktop/
+
+Get it Running: If you haven't used Docker before, make an account and sign in. You may need to close your terminals / VS code completely then reopen after installing. After installing, try running: docker ps
+
+
+## 2. Running Docker
+In your terminal, navigate to the project root and run:
+
+docker-compose up -d
+
+Going forward, rerun this to reestablish the connection. If that command doesn't work, try without the dash:
+
+docker compose up -d
+
+## 3. Verify it's Running
+Run docker ps. You should see a container mapped to port 6379. In docker desktop, your connection should have a green dot.
+
+## 4. Run Normal backend and frontend commands
+Backend command:
+python manage.py runserver
+
+Frontend command:
+npm run dev
+
+## 4. Stopping Setup
+When you are done for the moment and want to free up the system, run:
+
+docker-compose stop

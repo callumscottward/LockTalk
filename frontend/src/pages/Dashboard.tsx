@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+
 interface Conversation {
   id: string;
   name: string;
@@ -21,7 +22,6 @@ export default function Messages() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageInput, setMessageInput] = useState("");
   const [loadingConversations, setLoadingConversations] = useState(true);
-  const [loadingMessages, setLoadingMessages] = useState(false);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
 
   const socketRef = useRef<WebSocket | null>(null);
@@ -30,7 +30,7 @@ export default function Messages() {
     "Content-Type": "application/json",
   };
 
-  //Whenever the page is loaded, get whoever the current user is
+  // Fetch current user
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -38,120 +38,123 @@ export default function Messages() {
           headers: authHeaders,
           credentials: "include"
         });
-
         const data = await res.json();
         setCurrentUserEmail(data.username);
       } catch (err) {
         console.error(err);
       }
     };
-
     fetchUser();
-  });
+  }, []);
 
-  //This is to fetch all existing conversations and set it to the conversations variable
- useEffect(() => {
-  const fetchConversations = async () => {
-    try {
-      const res = await fetch("http://localhost:8000/dashboard/", {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include", // for session auth
-      });
-
-      if (!res.ok) {
-        throw new Error(`Failed to fetch conversations: ${res.status}`);
-      }
-
-      const data: Conversation[] = await res.json();
-      setConversations(data);
-      if (data.length > 0) setActiveConversationId(data[0].id);
-    } catch (err) {
-      console.error("Error fetching conversations:", err);
-    } finally {
-      setLoadingConversations(false);
-    }
-  };
-
-  fetchConversations();
-});
-
-  //Fetch all the messages once a conversation is selected
+  // Fetch conversations
   useEffect(() => {
-    if (!activeConversationId) return;
-
-    const fetchMessages = async () => {
-      setLoadingMessages(true);
+    const fetchConversations = async () => {
       try {
-        const res = await fetch(
-          `http://localhost:8000/dashboard/${activeConversationId}/messages/`,
-          {
-            headers: authHeaders, // include token
-            credentials: "include",
-
-          },
-        );
-
-        const dataApi = await res.json();
-
-        const mapped: Message[] = dataApi.map((msg: any) => {
-          return {
-            id: msg.id,
-            sender: msg.sender,
-            text: msg.content,
-            is_me: msg.sender?.trim() === currentUserEmail?.trim(),
-            timestamp: msg.created_at,
-          };
+        const res = await fetch("http://localhost:8000/dashboard/", {
+          headers: authHeaders,
+          credentials: "include",
         });
-
-        setMessages(mapped);
+        const data: Conversation[] = await res.json();
+        setConversations(data);
+        if (data.length > 0) setActiveConversationId(data[0].id);
       } catch (err) {
         console.error(err);
       } finally {
-        setLoadingMessages(false);
+        setLoadingConversations(false);
+      }
+    };
+    fetchConversations();
+  }, []);
+
+  // Setup WebSocket for active conversation
+  useEffect(() => {
+    if (!activeConversationId || !currentUserEmail) return;
+
+    // Close previous socket if switching conversations
+    if (socketRef.current) {
+      socketRef.current.close();
+    }
+
+    const ws = new WebSocket(`ws://localhost:8000/ws/conversation/${activeConversationId}/`);
+    socketRef.current = ws;
+
+    ws.onopen = () => console.log("Connected to conversation", activeConversationId);
+
+    ws.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      if (data.type === "chat_message") {
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now(), // temporary id
+            sender: data.sender,
+            text: data.content,
+            is_me: false
+          }
+        ]);
       }
     };
 
-    fetchMessages();
-  }, [activeConversationId]);
+    ws.onclose = () => console.log("Disconnected from conversation", activeConversationId);
 
-  //Ability to send messages to the current chat selected
-  const handleSendMessage = async () => {
-    if (!messageInput.trim() || !activeConversationId) return;
+    // Cleanup on unmount
+    return () => ws.close();
+  }, [activeConversationId, currentUserEmail]);
 
+  // Send message via WebSocket
+  const handleSendMessage = () => {
+    if (!messageInput.trim() || !socketRef.current) return;
+
+    setMessages(prev => [
+      ...prev,
+      {
+        id: Date.now(),            // temporary ID
+        sender: currentUserEmail!, // your email/username
+        text: messageInput,
+        is_me: true,               // ensure it aligns to the right
+      }
+    ]);
+
+    socketRef.current.send(JSON.stringify({ message: messageInput }));
+    setMessageInput("");
+  };
+
+  // Fetch existing messages whenever a conversation is selected
+useEffect(() => {
+  if (!activeConversationId || !currentUserEmail) return;
+
+  const fetchMessages = async () => {
     try {
       const res = await fetch(
-        `http://localhost:8000/dashboard/${activeConversationId}/messages/create/`,
+        `http://localhost:8000/dashboard/${activeConversationId}/messages/`,
         {
-          method: "POST",
           headers: authHeaders,
-          body: JSON.stringify({ content: messageInput }),
+          credentials: "include", // important if using session auth
         }
       );
 
-      const newMessageApi = await res.json();
+      if (!res.ok) throw new Error("Failed to fetch messages");
 
-      const newMessage: Message = {
-        id: newMessageApi.id,
-        sender: newMessageApi.sender,
-        text: newMessageApi.content,
-        is_me: true,
-        timestamp: newMessageApi.created_at,
-      };
+      const dataApi = await res.json();
 
-      //Update the list of messages to include the newest one in the latest index
-      setMessages((prev) => [
-        ...prev,
-        { ...newMessage, is_me: true },
-      ]);
+      const mapped: Message[] = dataApi.map((msg: any) => ({
+        id: msg.id,
+        sender: msg.sender,
+        text: msg.content,
+        is_me: msg.sender.trim() === currentUserEmail.trim(),
+        timestamp: msg.created_at,
+      }));
 
-      setMessageInput("");
+      setMessages(mapped); // populate chat window
     } catch (err) {
-      console.error(err);
-      alert("Failed to send message. Try again.");
+      console.error("Error fetching messages:", err);
+      setMessages([]); // fallback to empty
     }
   };
+
+  fetchMessages();
+}, [activeConversationId, currentUserEmail]); // runs whenever conversation or user changes
 
   return (
     <div style={{ display: "flex", height: "100vh" }}>
@@ -161,7 +164,7 @@ export default function Messages() {
         {loadingConversations ? (
           <p style={{ padding: "15px" }}>Loading...</p>
         ) : (
-          conversations.map((conv) => (
+          conversations.map(conv => (
             <div
               key={conv.id}
               onClick={() => setActiveConversationId(conv.id)}
@@ -181,18 +184,15 @@ export default function Messages() {
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "15px", borderBottom: "1px solid #ddd", background: "#eee" }}>
           <strong>
-            {/*Fix This */}
-            {conversations.find((c) => c.id === activeConversationId)?.name || "Select a chat"}
+            {conversations.find(c => c.id === activeConversationId)?.name || "Select a chat"}
           </strong>
         </div>
 
         <div style={{ flex: 1, padding: "15px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "10px" }}>
-          {loadingMessages ? (
-            <p>Loading messages...</p>
-          ) : messages.length === 0 ? (
+          {messages.length === 0 ? (
             <p>No messages yet!</p>
           ) : (
-            messages.map((msg) => (
+            messages.map(msg => (
               <div
                 key={msg.id}
                 style={{
@@ -217,8 +217,8 @@ export default function Messages() {
             style={{ flex: 1, padding: "10px", borderRadius: "20px", border: "1px solid #075E54" }}
             placeholder="Type a message..."
             value={messageInput}
-            onChange={(e) => setMessageInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+            onChange={e => setMessageInput(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") handleSendMessage(); }}
           />
           <button
             onClick={handleSendMessage}

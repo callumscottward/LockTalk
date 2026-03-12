@@ -1,7 +1,8 @@
 import json
 from django.contrib.auth import get_user_model
 from channels.generic.websocket import AsyncWebsocketConsumer
-from .models import Conversation
+from .models import Conversation, Message
+from channels.db import database_sync_to_async
 
 User = get_user_model()
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -16,12 +17,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.conversation_id = self.scope['url_route']['kwargs']['conversation_id']
 
          # Validate user is part of the conversation
-        conversation = await database_sync_to_async(
-            lambda: Conversation.objects.filter(id=self.conversation_id, participants=self.user).first()
+        self.conversation = await database_sync_to_async(
+            lambda: Conversation.objects.get(id=self.conversation_id)
         )()
 
-        if not conversation:
-            # Reject connection if user is not a participant
+        is_member = await database_sync_to_async(
+        lambda: self.user in self.conversation.participants.all()
+        ) ()
+
+        if not is_member:
             await self.close()
             return
         
@@ -39,21 +43,30 @@ class ChatConsumer(AsyncWebsocketConsumer):
         message = data.get("message")
         if not message:
             return
-
+        
+         # Save message to database
+        details = await database_sync_to_async(
+            lambda: Message.objects.create(
+                conversation=self.conversation,
+                sender=self.user,
+                content=message
+        )
+        )()
+        
         # Broadcast to group
         await self.channel_layer.group_send(
             self.group_name,
             {
                 "type": "chat_message",
-                "message": message,
-                "sender": f"{self.user.first_name} {self.user.last_name}",
-            }
+                "content": details.content,
+                "sender_email": self.user.email,
+                "sender_name": f"{self.user.first_name} {self.user.last_name}",            }
         )
 
     async def chat_message(self, event):
-        # Send to WebSocket
         await self.send(text_data=json.dumps({
             "type": "chat_message",
-            "message": event["message"],
-            "sender": event["sender"],
+            "content": event["content"],
+            "sender_email": event["sender_email"],
+            "sender_name": event["sender_name"],
         }))

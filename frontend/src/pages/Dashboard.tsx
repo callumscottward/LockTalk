@@ -83,14 +83,16 @@ export default function Messages() {
 
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data);
+      console.log(data)
+      console.log(currentUserEmail)
       if (data.type === "chat_message") {
         setMessages(prev => [
           ...prev,
           {
             id: Date.now(), // temporary id
-            sender: data.sender,
+            sender: data.sender_email,
             text: data.content,
-            is_me: false
+            is_me: data.sender_email === currentUserEmail
           }
         ]);
       }
@@ -105,16 +107,6 @@ export default function Messages() {
   // Send message via WebSocket
   const handleSendMessage = () => {
     if (!messageInput.trim() || !socketRef.current) return;
-
-    setMessages(prev => [
-      ...prev,
-      {
-        id: Date.now(),            // temporary ID
-        sender: currentUserEmail!, // your email/username
-        text: messageInput,
-        is_me: true,               // ensure it aligns to the right
-      }
-    ]);
 
     socketRef.current.send(JSON.stringify({ message: messageInput }));
     setMessageInput("");

@@ -41,6 +41,10 @@ export default function Signup() {
 
     if (response.ok) {
       console.log("SUCCESS BLOCK RUNNING");
+
+      // Name saved to use in other pages, to see who sent it for example
+      localStorage.setItem("username", '${firstName} ${lastName}')
+
       setMessage("Account created successfully!");
       window.location.href = "/";
     } else {

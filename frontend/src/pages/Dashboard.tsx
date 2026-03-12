@@ -1,154 +1,222 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
-// Fake chats, only includes the most recent message and chat info
-const MOCK_CHATS = [
-  { id: '1', name: 'Dan, Alice, Greg, Mike, Tom, Henry, Sam, Amy, Barb', type: 'group', lastMsg: 'Hey guys!', time: '10:45 AM' },
-  { id: '2', name: 'Alice', type: 'direct', lastMsg: 'I will later this week.', time: 'Yesterday' },
-  { id: '3', name: 'Standup', type: 'group', lastMsg: 'Another group message', time: 'Wednesday' },
-  { id: '4', name: 'Bob', type: 'direct', lastMsg: 'Another individual message', time: 'Wednesday' },
-];
+interface Conversation {
+  id: string;
+  name: string;
+  is_group: boolean;
+  last_msg?: string;
+  time?: string;
+}
 
-// Some fake messages, which are the other messages in the fake chats
-const MOCK_MESSAGES = [
-  // Chat 1 (Dan, Alice...)
-  { id: 101, chatId: '1', sender: 'Alice', text: 'Good morning everyone.', isMe: false },
-  { id: 102, chatId: '1', sender: 'Dan', text: 'Good morning', isMe: false },
-  
-  // Chat 2 (Alice Individual)
-  { id: 103, chatId: '2', sender: 'Alice', text: 'Did you run the update?', isMe: false },
-  { id: 104, chatId: '2', sender: 'Me', text: 'Working on it now.', isMe: true },
-
-  // Chat 3 (Standup)
-  { id: 105, chatId: '3', sender: 'Greg', text: 'Ready for the meeting?', isMe: false },
-  { id: 106, chatId: '3', sender: 'Me', text: 'Give me 5 minutes.', isMe: true },
-
-  // Chat 4 (Bob)
-  { id: 107, chatId: '4', sender: 'Bob', text: 'Hey, do you have that log file?', isMe: false },
-];
+interface Message {
+  id: number;
+  sender: string;
+  text: string;
+  is_me: boolean;
+  timestamp?: string;
+}
 
 export default function Messages() {
-  const [activeChatId, setActiveChatId] = useState('1'); 
-  const [messageInput, setMessageInput] = useState('');
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [messageInput, setMessageInput] = useState("");
+  const [loadingConversations, setLoadingConversations] = useState(true);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
 
-  const activeChat = MOCK_CHATS.find(c => c.id === activeChatId) || MOCK_CHATS[0];
-  const chatMessages = MOCK_MESSAGES.filter(m => m.chatId === activeChatId);
+  const socketRef = useRef<WebSocket | null>(null);
+
+  const authHeaders = {
+    "Content-Type": "application/json",
+  };
+
+  // Fetch current user
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/api/me/", {
+          headers: authHeaders,
+          credentials: "include"
+        });
+        const data = await res.json();
+        setCurrentUserEmail(data.username);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  // Fetch conversations
+  useEffect(() => {
+    const fetchConversations = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/dashboard/", {
+          headers: authHeaders,
+          credentials: "include",
+        });
+        const data: Conversation[] = await res.json();
+        setConversations(data);
+        if (data.length > 0) setActiveConversationId(data[0].id);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingConversations(false);
+      }
+    };
+    fetchConversations();
+  }, []);
+
+  // Setup WebSocket for active conversation
+  useEffect(() => {
+    if (!activeConversationId || !currentUserEmail) return;
+
+    // Close previous socket if switching conversations
+    if (socketRef.current) {
+      socketRef.current.close();
+    }
+
+    const ws = new WebSocket(`ws://localhost:8000/ws/conversation/${activeConversationId}/`);
+    socketRef.current = ws;
+
+    ws.onopen = () => console.log("Connected to conversation", activeConversationId);
+
+    ws.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      console.log(data)
+      console.log(currentUserEmail)
+      if (data.type === "chat_message") {
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now(), // temporary id
+            sender: data.sender_email,
+            text: data.content,
+            is_me: data.sender_email === currentUserEmail
+          }
+        ]);
+      }
+    };
+
+    ws.onclose = () => console.log("Disconnected from conversation", activeConversationId);
+
+    // Cleanup on unmount
+    return () => ws.close();
+  }, [activeConversationId, currentUserEmail]);
+
+  // Send message via WebSocket
+  const handleSendMessage = () => {
+    if (!messageInput.trim() || !socketRef.current) return;
+
+    socketRef.current.send(JSON.stringify({ message: messageInput }));
+    setMessageInput("");
+  };
+
+  // Fetch existing messages whenever a conversation is selected
+useEffect(() => {
+  if (!activeConversationId || !currentUserEmail) return;
+
+  const fetchMessages = async () => {
+    try {
+      const res = await fetch(
+        `http://localhost:8000/dashboard/${activeConversationId}/messages/`,
+        {
+          headers: authHeaders,
+          credentials: "include", // important if using session auth
+        }
+      );
+
+      if (!res.ok) throw new Error("Failed to fetch messages");
+
+      const dataApi = await res.json();
+
+      const mapped: Message[] = dataApi.map((msg: any) => ({
+        id: msg.id,
+        sender: msg.sender,
+        text: msg.content,
+        is_me: msg.sender.trim() === currentUserEmail.trim(),
+        timestamp: msg.created_at,
+      }));
+
+      setMessages(mapped); // populate chat window
+    } catch (err) {
+      console.error("Error fetching messages:", err);
+      setMessages([]); // fallback to empty
+    }
+  };
+
+  fetchMessages();
+}, [activeConversationId, currentUserEmail]); // runs whenever conversation or user changes
 
   return (
-    /* MAIN CONTAINER */
-    <div style={{ 
-      display: 'flex', 
-      height: '100vh', 
-      width: '100vw', 
-      overflow: 'hidden', 
-      fontFamily: 'sans-serif', 
-      color: 'black' ,
-      // Needed to fix a boarder issue
-      boxSizing: 'border-box', 
-      margin: 0,
-      padding: 0,
-      position: 'fixed',
-      top: 0,
-      left: 0
-    }}>
-      
-      {/* SIDEBAR: Width is 30%, but we set a min/max to keep it readable on desktop */}
-      <div style={{ 
-        width: '30%', 
-        minWidth: '10vw', 
-        maxWidth: '20vw', 
-        borderRight: '1px solid #ddd', 
-        background: '#f0f0f0',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
-        <div style={{ padding: '20px', background: '#075E54', color: 'black', flexShrink: 0 }}>
-          <strong>Chats</strong>
-        </div>
-        
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          {MOCK_CHATS.map((chat) => (
-            <div 
-              key={chat.id}
-              onClick={() => setActiveChatId(chat.id)}
+    <div style={{ display: "flex", height: "100vh" }}>
+      {/* Sidebar */}
+      <div style={{ width: "250px", borderRight: "1px solid #ddd", background: "#f0f0f0" }}>
+        <h3 style={{ padding: "15px" }}>Chats</h3>
+        {loadingConversations ? (
+          <p style={{ padding: "15px" }}>Loading...</p>
+        ) : (
+          conversations.map(conv => (
+            <div
+              key={conv.id}
+              onClick={() => setActiveConversationId(conv.id)}
               style={{
-                padding: '12px 15px',
-                cursor: 'pointer',
-                borderBottom: '1px solid #e9edef',
-                background: activeChatId === chat.id ? '#ebebeb' : 'white',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px'
+                padding: "12px",
+                cursor: "pointer",
+                background: activeConversationId === conv.id ? "#ddd" : "white",
               }}
             >
-              <span style={{ fontSize: '1.2rem', flexShrink: 0 }}>
-                {chat.type === 'group' ? '👥' : '👤'}
-              </span>
-
-              <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%' }}>
-                <strong style={{ 
-                  whiteSpace: 'nowrap', 
-                  overflow: 'hidden', 
-                  textOverflow: 'ellipsis', 
-                  fontSize: '0.95rem' 
-                }}>
-                  {chat.name}
-                </strong>
-                <small style={{ color: 'black', fontSize: '0.75rem', marginTop: '2px' }}>
-                  {chat.time}
-                </small>
-              </div>
+              {conv.name} {conv.is_group ? "(Group)" : "(Direct)"}
             </div>
-          ))}
-        </div>
+          ))
+        )}
       </div>
 
-      {/* chat window is flex bc 1 makes it take up all remaining space, attempt to deal with extra space issue */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#f0f0f0' }}>
-        
-        {/* Header */}
-        <div style={{ padding: '15px', background: '#ededed', borderBottom: '1px solid #ddd', flexShrink: 0 }}>
-          <strong>{activeChat.name}</strong> 
-          <span style={{ fontSize: '0.8rem', color: 'black', marginLeft: '10px' }}>
-            ({activeChat.type})
-          </span>
+      {/* Chat Window */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <div style={{ padding: "15px", borderBottom: "1px solid #ddd", background: "#eee" }}>
+          <strong>
+            {conversations.find(c => c.id === activeConversationId)?.name || "Select a chat"}
+          </strong>
         </div>
 
-        {/* Message Area */}
-        <div style={{ flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {chatMessages.length > 0 ? (
-            chatMessages.map(msg => (
-              <div key={msg.id} style={{
-                alignSelf: msg.isMe ? 'flex-end' : 'flex-start',
-                background: msg.isMe ? '#075E54' : 'white',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                maxWidth: '70%',
-                boxShadow: '0 1px 1px rgba(0,0,0,0.1)',
-                color: 'black'
-              }}>
-                {!msg.isMe && <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#075E54' }}>{msg.sender}</div>}
-                <div style={{ wordBreak: 'break-word' }}>{msg.text}</div>
+        <div style={{ flex: 1, padding: "15px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "10px" }}>
+          {messages.length === 0 ? (
+            <p>No messages yet!</p>
+          ) : (
+            messages.map(msg => (
+              <div
+                key={msg.id}
+                style={{
+                  alignSelf: msg.is_me ? "flex-end" : "flex-start",
+                  background: msg.is_me ? "#075E54" : "#fff",
+                  color: msg.is_me ? "#fff" : "#000",
+                  padding: "8px 12px",
+                  borderRadius: "8px",
+                  maxWidth: "70%",
+                }}
+              >
+                {!msg.is_me && <div style={{ fontWeight: "bold" }}>{msg.sender}</div>}
+                <div>{msg.text}</div>
               </div>
             ))
-          ) : (
-            <div style={{ textAlign: 'center', color: 'black', marginTop: '20px' }}>
-              No messages yet!
-            </div>
           )}
         </div>
 
-        {/* Input Bar */}
-        <div style={{ padding: '15px', background: '#f0f0f0', display: 'flex', gap: '10px', flexShrink: 0 }}>
-          <input 
-            style={{ flex: 1, padding: '12px', borderRadius: '20px', border: '1px solid #075E54', outline: 'none' }}
+        {/* Input */}
+        <div style={{ padding: "10px", borderTop: "1px solid #ddd", display: "flex", gap: "10px" }}>
+          <input
+            style={{ flex: 1, padding: "10px", borderRadius: "20px", border: "1px solid #075E54" }}
             placeholder="Type a message..."
             value={messageInput}
-            onChange={(e) => setMessageInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter'}
+            onChange={e => setMessageInput(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") handleSendMessage(); }}
           />
-          <button style={{ background: '#075E54', color: 'black', border: 'none', borderRadius: '50%', width: '45px', height: '45px', cursor: 'pointer' }}>
-          {/* Character found just searching google*/}
-          ➤
+          <button
+            onClick={handleSendMessage}
+            style={{ padding: "10px 15px", borderRadius: "50%", background: "#075E54", color: "white" }}
+          >
+            ➤
           </button>
         </div>
       </div>

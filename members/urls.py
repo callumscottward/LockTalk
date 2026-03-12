@@ -9,4 +9,5 @@ urlpatterns = [
     path('api/members/details/<int:id>', views.member_detail_api, name="member details"),
     path('api/login/', views.login_api, name="login"),
     path('api/register/', views.register_api, name="register"),
+    path("api/me/", views.current_user_api),
 ]

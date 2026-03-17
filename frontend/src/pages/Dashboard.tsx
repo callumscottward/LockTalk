@@ -57,7 +57,8 @@ export default function Messages() {
         });
         const data: Conversation[] = await res.json();
         setConversations(data);
-        if (data.length > 0) setActiveConversationId(data[0].id);
+        //don’t override user selection later
+        setActiveConversationId(prev => prev ?? data[0]?.id);
       } catch (err) {
         console.error(err);
       } finally {
@@ -65,6 +66,28 @@ export default function Messages() {
       }
     };
     fetchConversations();
+  }, []);
+
+  //Fetch a conversation if a conversation is added
+  useEffect(() => {
+    const ws = new WebSocket("ws://localhost:8000/ws/conversations/");
+
+    ws.onopen = () => console.log("Connected to conversations socket for a new conversation to be added and updated");
+
+    ws.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+
+      if (data.type === "new_conversation") {
+        setConversations(prev => {
+          if (prev.some(c => c.id === data.conversation.id)) return prev;
+          return [data.conversation, ...prev];
+        });
+      }
+    };
+
+    ws.onclose = () => console.log("Disconnected from conversations socket");
+
+    return () => ws.close();
   }, []);
 
   // Setup WebSocket for active conversation
@@ -83,8 +106,6 @@ export default function Messages() {
 
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data);
-      console.log(data)
-      console.log(currentUserEmail)
       if (data.type === "chat_message") {
         setMessages(prev => [
           ...prev,
@@ -95,6 +116,15 @@ export default function Messages() {
             is_me: data.sender_email === currentUserEmail
           }
         ]);
+
+        setConversations(prev => {
+          const index = prev.findIndex(c => c.id === activeConversationId);
+          if (index === -1) return prev;
+
+          const newList = [...prev];
+          let latestConversation = newList.splice(index, 1)[0];
+          return [latestConversation, ...newList];
+        })
       }
     };
 
@@ -113,40 +143,40 @@ export default function Messages() {
   };
 
   // Fetch existing messages whenever a conversation is selected
-useEffect(() => {
-  if (!activeConversationId || !currentUserEmail) return;
+  useEffect(() => {
+    if (!activeConversationId || !currentUserEmail) return;
 
-  const fetchMessages = async () => {
-    try {
-      const res = await fetch(
-        `http://localhost:8000/dashboard/${activeConversationId}/messages/`,
-        {
-          headers: authHeaders,
-          credentials: "include", // important if using session auth
-        }
-      );
+    const fetchMessages = async () => {
+      try {
+        const res = await fetch(
+          `http://localhost:8000/dashboard/${activeConversationId}/messages/`,
+          {
+            headers: authHeaders,
+            credentials: "include", // important if using session auth
+          }
+        );
 
-      if (!res.ok) throw new Error("Failed to fetch messages");
+        if (!res.ok) throw new Error("Failed to fetch messages");
 
-      const dataApi = await res.json();
+        const dataApi = await res.json();
 
-      const mapped: Message[] = dataApi.map((msg: any) => ({
-        id: msg.id,
-        sender: msg.sender,
-        text: msg.content,
-        is_me: msg.sender.trim() === currentUserEmail.trim(),
-        timestamp: msg.created_at,
-      }));
+        const mapped: Message[] = dataApi.map((msg: any) => ({
+          id: msg.id,
+          sender: msg.sender,
+          text: msg.content,
+          is_me: msg.sender.trim() === currentUserEmail.trim(),
+          timestamp: msg.created_at,
+        }));
 
-      setMessages(mapped); // populate chat window
-    } catch (err) {
-      console.error("Error fetching messages:", err);
-      setMessages([]); // fallback to empty
-    }
-  };
+        setMessages(mapped); // populate chat window
+      } catch (err) {
+        console.error("Error fetching messages:", err);
+        setMessages([]); // fallback to empty
+      }
+    };
 
-  fetchMessages();
-}, [activeConversationId, currentUserEmail]); // runs whenever conversation or user changes
+    fetchMessages();
+  }, [activeConversationId, currentUserEmail]); // runs whenever conversation or user changes
 
   return (
     <div style={{ display: "flex", height: "100vh" }}>

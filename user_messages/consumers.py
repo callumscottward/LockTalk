@@ -70,3 +70,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
             "sender_email": event["sender_email"],
             "sender_name": event["sender_name"],
         }))
+
+class ConversationsConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        await self.channel_layer.group_add("conversations", self.channel_name)
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard("conversations", self.channel_name)
+
+    async def new_conversation(self, event):
+        await self.send(text_data=json.dumps({
+            "type": "new_conversation",
+            "conversation": event["conversation"]
+        }))

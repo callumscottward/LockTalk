@@ -100,36 +100,36 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
         """
         user = self.scope["user"]
         name = content.get("name", "")
-        participant_usernames = content.get("participants", [])
-
-        # Fetch users
-        participants = list(User.objects.filter(username__in=participant_usernames))
+        usernames = content.get("participants", [])
+        
+        participants = list(User.objects.filter(username__in=usernames))
         participants.append(user)  # Add creator automatically
 
-        # Create conversation
-        conversation = Conversation.objects.create(
-            name=name,
-            moderator=user  # default moderator
-        )
-        conversation.participants.add(*participants)
+        # Create conversation with moderator
+        conversation = await database_sync_to_async(
+            lambda: Conversation.objects.create(
+                name=name,
+                moderator=user
+            )
+        )()
 
-        # Serialize conversation
-        data = ConversationSerializer(conversation, context={"request": self.scope["user"]}).data
+        # Add participants
+        await database_sync_to_async(lambda: conversation.participants.add(*participants))()
 
-        await self.send_json({
-            "type": "conversation_created",
-            "conversation": data
-        })
+        # If using stored is_group
+        if len(participants) >= 3:
+            await database_sync_to_async(
+                lambda: setattr(conversation, "is_group", True))()
+            await database_sync_to_async(
+                lambda: conversation.save(update_fields=["is_group"]))()
 
+        # Broadcast to participants
+        serialized = ConversationSerializer(conversation).data
         for participant in participants:
-            if participant != user:
-                await self.channel_layer.group_send(
-                    f"user_{participant.id}",
-                    {
-                        "type": "conversation_created",
-                        "conversation": data
-                    }
-                )
+            await self.channel_layer.group_send(
+                f"user_{participant.id}",
+                {"type": "new_conversation", "conversation": serialized}
+            )
 
     async def conversation_created(self, event):
         await self.send_json(event)

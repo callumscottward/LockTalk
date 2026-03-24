@@ -26,6 +26,9 @@ jobs:
         working-directory: ./frontend
         run: npx typedoc --out ./deploy/frontend
 
+      - name: Create Deploy
+        run: mkdir -p deploy/backend
+
       # Run Doxygen, creating a folder
       - name: Build Doxygen
         run: doxygen Doxyfile

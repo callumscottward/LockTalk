@@ -27,7 +27,7 @@ jobs:
         run: npx typedoc --out ./deploy/frontend
 
       - name: Create Deploy
-        run: mkdir -p deploy/backend
+        run: mkdir -p deploy/backend/
 
       # Run Doxygen, creating a folder
       - name: Build Doxygen
@@ -35,7 +35,7 @@ jobs:
 
       # Looks for where the index.html code is and goes there for the landing page
       - name: Prepare Landing Page
-        run: find . -name "index.html" -not -path "./deploy/*" -exec cp {} ./deploy/index.html \;
+        run: cp documentation-landing-page.html ./deploy/index.html
 
       - name: Upload to GitHub Pages
         uses: actions/upload-pages-artifact@v3

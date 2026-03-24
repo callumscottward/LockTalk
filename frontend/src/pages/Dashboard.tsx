@@ -16,6 +16,12 @@ interface Message {
   timestamp?: string;
 }
 
+/* Can be used for searching */
+interface User {
+  id: number;
+  username: string;
+}
+
 export default function Messages() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -23,6 +29,8 @@ export default function Messages() {
   const [messageInput, setMessageInput] = useState("");
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const socketRef = useRef<WebSocket | null>(null);
 
@@ -179,10 +187,16 @@ export default function Messages() {
   }, [activeConversationId, currentUserEmail]); // runs whenever conversation or user changes
 
   return (
-    <div style={{ display: "flex", height: "100vh" }}>
+    <div style={{ display: "flex", height: "100vh", width: "100vw", maxWidth: "100%", 
+      maxHeight: "100%", overflow: "hidden", position: "fixed", top: 0, left: 0, 
+      margin: 0, padding: 0, boxSizing: "border-box" }}>
       {/* Sidebar */}
-      <div style={{ width: "250px", borderRight: "1px solid #ddd", background: "#f0f0f0" }}>
+      <div style={{ width: "250px", borderRight: "1px solid #ddd", background: "#f0f0f0", display: "flex", flexDirection: "column", overflowY: "auto"}}>
         <h3 style={{ padding: "15px" }}>Chats</h3>
+        <button 
+          onClick={() => setIsModalOpen(true)} 
+          style={{ ...btnStyle, backgroundColor: "#ddd", margin: "10px" }}
+        >+</button>
         {loadingConversations ? (
           <p style={{ padding: "15px" }}>Loading...</p>
         ) : (
@@ -250,6 +264,40 @@ export default function Messages() {
           </button>
         </div>
       </div>
+      {isModalOpen && (
+      <div style={{position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+                    background: "rgba(0,0,0,0.5)", // Dims the background behind the popup 
+                    display: "flex", justifyContent: "center", 
+                    alignItems: "center", zIndex: 1000}}>
+        <div style={{background: "white", padding: "20px", borderRadius: "8px", 
+                  width: "300px", boxShadow: "0 2px 10px rgba(0,0,0,0.1)"}}>
+          <h3>New Chat</h3>
+          <input 
+            placeholder="Search users..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ width: "90%", padding: "8px", marginBottom: "10px" }}
+          />
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+            <button onClick={() => setIsModalOpen(false)} style={{ padding: "8px", color: "#000000", background: "#ddd" }}>Cancel</button>
+            {/* Temp button with no functionality. Can be replaced to actually create a new chat once backend is sync. */}
+            <button type="button" style={{ ...btnStyle, backgroundColor: "#075E54", cursor: "default" }}>Create</button>
+            {/* <button onClick={handleCreateChat} style={{ padding: "8px", background: "#075E54", color: "white", borderRadius: "4px" }}>Create</button> */}
+          </div>
+        </div>
+      </div>
+    )}
     </div>
   );
 }
+
+/* Repeatable code to create buttons for the dashboard.*/
+const btnStyle: React.CSSProperties = {
+  padding: "10px 20px",
+  borderRadius: "6px",
+  border: "none",
+  color: "#f0f0f0",
+  cursor: "pointer",
+  fontWeight: "bold",
+};

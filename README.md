@@ -4,6 +4,16 @@ Welcome to LockTalk, a project created by Brendan Farrell, Maddie Luth, Miah Mas
 
 ---
 
+# Release Notes
+
+## Milestone 2 Features
+
+- Account creation and login on React site
+- Direct messaging via websockets between 2+ users simultaneously
+- Conversation creation and management on Django admin site
+
+---
+
 # Django Setup (Backend)
 
 ## 1. Create and Activate a Virtual Environment

@@ -1,7 +1,17 @@
 import { useState } from 'react';
 
+/**
+ * @name UserProfile
+ * ## UserProfile Component
+ * This module is the view of the user profile page with all
+ * its data. 
+ * It shows things like the users email, username, and role.
+ * There is temporary data put in to mock user data while
+ * the backend is implemented.
+ * @category Pages
+ * @returns A layout containing a centered card with user details.
+ */
 export default function UserProfile() {
-  // Temp user for show
   const [user] = useState({
     username: 'emma.wilson',
     email: 'emmaW@gmail',
@@ -10,7 +20,6 @@ export default function UserProfile() {
   });
 
   return (
-    // Default styless
     <div style={{ 
       height: '100vh', 
       width: '100vw', 
@@ -21,7 +30,6 @@ export default function UserProfile() {
       fontFamily: 'sans-serif',
       color: 'black',
       boxSizing: 'border-box',
-      // Boarder fix again 
       margin: 0,
       padding: 0,
       position: 'fixed',

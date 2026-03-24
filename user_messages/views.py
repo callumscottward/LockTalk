@@ -12,15 +12,22 @@ from .serializers import MessageSerializer
 
 User = get_user_model()
 
+## @class ConversationListView
+# @brief View to list all the users conversations
+# @details Can support filtering by group / direct or username
 class ConversationListView(APIView):
     permission_classes = [IsAuthenticated]
-
+    
+    ## @brief Handles get requests to retrieve conversations.
+    #  @param request object is called.
+    #  @param[in] type (Query Param) Filter by 'group' or 'direct'.
+    #  @param[in] username (Query Param) Filter by a specific participant's username.
+    #  @return Response object containing serialized conversation data.
     def get(self, request):
         user = request.user
 
         conversations = Conversation.objects.filter(participants=user)
 
-        # Optional filters
         chat_type = request.query_params.get("type")
         username = request.query_params.get("username")
 
@@ -37,10 +44,15 @@ class ConversationListView(APIView):
         serializer = ConversationSerializer(conversations, many=True, context={"request": request})
         return Response(serializer.data)
 
+## @class MessageListView
+# @brief Provides a list of messages for a specific conversation if not denied
 class MessageListView(ListAPIView):
     serializer_class = MessageSerializer
     permission_classes = [IsAuthenticated]
 
+    ## @brief Retrieves the queryset of messages for the given conversation ID.
+    #  @exception PermissionDenied if the user is not a participant.
+    #  @return A queryset of Message objects or an empty queryset if not found.
     def get_queryset(self):
         conversation_id = self.kwargs["id"]
         user = self.request.user
@@ -54,10 +66,17 @@ class MessageListView(ListAPIView):
             raise PermissionDenied("You are not part of this conversation.")
 
         return conversation.messages.all()
-    
+
+## @class MessageCreateView
+#  @brief Handles the creation of new messages within a conversation.
 class MessageCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
+
+    ## @brief post method to create a message.
+    #  @param request The request object.
+    #  @param conversation_id The ID of the conversation to post to.
+    #  @return HTTP_201_CREATED Created on success, HTTP_400_BAD_REQUEST if empty, HTTP_403_FORBIDDEN if unauthorized.
     def post(self, request, conversation_id):
         conversation = get_object_or_404(Conversation, id=conversation_id)
 

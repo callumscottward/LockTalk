@@ -16,12 +16,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Tools
+        working-directory: ./frontend
         run: |
           sudo apt-get update && sudo apt-get install -y doxygen
           npm install
 
       # Run TypeDoc, creating a folder (frontend)
       - name: Build TypeDoc
+        working-directory: ./frontend
         run: npx typedoc --out ./deploy/frontend
 
       # Run Doxygen, creating a folder

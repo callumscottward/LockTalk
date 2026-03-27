@@ -76,3 +76,24 @@ class MessageCreateView(APIView):
 
         serializer = MessageSerializer(message)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+class ConversationCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        name = request.data.get("name", "")
+        usernames = request.data.get("participants", [])
+
+        participants = list(User.objects.filter(username__in=usernames))
+        participants.append(request.user)
+
+        conversation = Conversation.objects.create(
+            name=name,
+            moderator=request.user,
+            is_group=len(participants) >= 3
+        )
+
+        conversation.participants.add(*participants)
+
+        serializer = ConversationSerializer(conversation)
+        return Response(serializer.data, status=201)

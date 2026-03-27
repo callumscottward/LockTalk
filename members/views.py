@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import User
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, get_user_model
 
 from .forms import CustomUserCreationForm
 
@@ -98,3 +98,34 @@ class current_user_api(APIView):
             "email": user.email,
             "username": user.username
         })
+
+class UserListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        query = request.GET.get("search", "")
+
+        users = User.objects.exclude(id=request.user.id)
+
+        if query:
+            users = users.filter(username__icontains=query)
+
+        data = [
+            {
+                "id": user.id,
+                "username": user.username,
+                "name": f"{user.first_name} {user.last_name}"
+            }
+            for user in users
+        ]
+
+        return Response(data)
+    
+class UserSearchAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        query = request.GET.get("search", "")
+        users = User.objects.filter(username__icontains=query)[:10]
+        data = [{"id": u.id, "username": u.username} for u in users]
+        return Response(data)

@@ -4,8 +4,9 @@ interface Conversation {
   id: string;
   name: string;
   is_group: boolean;
+  participants: User[];
   last_msg?: string;
-  time?: string;
+  time: string;
 }
 
 interface Message {
@@ -29,16 +30,21 @@ export default function Messages() {
   const [messageInput, setMessageInput] = useState("");
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [users, setUsers] = useState<User[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [newConversationName, setConversationName] = useState("")
 
   const socketRef = useRef<WebSocket | null>(null);
+  const conversationsSocketRef = useRef<WebSocket | null>(null);
 
   const authHeaders = {
     "Content-Type": "application/json",
   };
 
-  // Fetch current user
+  // Fetch current user once you reach the dashboard website
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -55,7 +61,7 @@ export default function Messages() {
     fetchUser();
   }, []);
 
-  // Fetch conversations
+  // Fetch conversations once you reach the dashboard website
   useEffect(() => {
     const fetchConversations = async () => {
       try {
@@ -64,9 +70,10 @@ export default function Messages() {
           credentials: "include",
         });
         const data: Conversation[] = await res.json();
-        setConversations(data);
-        //don’t override user selection later
-        setActiveConversationId(prev => prev ?? data[0]?.id);
+        //Sort the conversations by the most recent time (The time variable is affected by the data of creation and last message)
+        let sortedConversations = [...data].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+        setConversations(sortedConversations);
+        setActiveConversationId(sortedConversations[0].id);
       } catch (err) {
         console.error(err);
       } finally {
@@ -76,24 +83,42 @@ export default function Messages() {
     fetchConversations();
   }, []);
 
-  //Fetch a conversation if a conversation is added
+  // Web Socket Effect that is used when adding a new conversation
   useEffect(() => {
     const ws = new WebSocket("ws://localhost:8000/ws/conversations/");
-
-    ws.onopen = () => console.log("Connected to conversations socket for a new conversation to be added and updated");
+    conversationsSocketRef.current = ws;
 
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data);
 
+      console.log(data)
+
       if (data.type === "new_conversation") {
         setConversations(prev => {
-          if (prev.some(c => c.id === data.conversation.id)) return prev;
-          return [data.conversation, ...prev];
+          const newConv = data.conversation;
+
+          const existingIndex = prev.findIndex(conv => {
+            if (conv.participants.length !== newConv.participants.length) return false;
+
+            const set = new Set(conv.participants.map(p => p.username));
+            return newConv.participants.every(p => set.has(p.username));
+          });
+
+          // CASE 1: Conversation already exists → move to top
+          if (existingIndex !== -1) {
+            const updated = [...prev];
+            const existing = updated.splice(existingIndex, 1)[0];
+
+            setActiveConversationId(existing.id);
+            return [existing, ...updated];
+          }
+
+          // ✅ CASE 2: New conversation → add to top
+          setActiveConversationId(newConv.id);
+          return [newConv, ...prev];
         });
       }
     };
-
-    ws.onclose = () => console.log("Disconnected from conversations socket");
 
     return () => ws.close();
   }, []);
@@ -109,8 +134,6 @@ export default function Messages() {
 
     const ws = new WebSocket(`ws://localhost:8000/ws/conversation/${activeConversationId}/`);
     socketRef.current = ws;
-
-    ws.onopen = () => console.log("Connected to conversation", activeConversationId);
 
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data);
@@ -135,8 +158,6 @@ export default function Messages() {
         })
       }
     };
-
-    ws.onclose = () => console.log("Disconnected from conversation", activeConversationId);
 
     // Cleanup on unmount
     return () => ws.close();
@@ -186,15 +207,52 @@ export default function Messages() {
     fetchMessages();
   }, [activeConversationId, currentUserEmail]); // runs whenever conversation or user changes
 
+  useEffect(() => {
+    if (searchQuery.trim() === "") {
+      setUsers([]);
+      return;
+    }
+    fetch(`http://localhost:8000/api/users/?search=${encodeURIComponent(searchQuery)}`, {
+      credentials: "include"
+    })
+      .then(res => res.json())
+      .then(data => setUsers(data));
+  }, [searchQuery]);
+
+  const toggleUser = (username: string) => {
+    setSelectedUsers(prev =>
+      prev.includes(username)
+        ? prev.filter(u => u !== username)
+        : [...prev, username]
+    );
+  };
+
+  const handleCreateChat = () => {
+    if (!selectedUsers.length || !conversationsSocketRef.current) return;
+
+    conversationsSocketRef.current.send(JSON.stringify({
+      action: "create_group",
+      name: newConversationName, // optional
+      participants: selectedUsers,
+    }));
+
+    setSelectedUsers([]);
+    setSearchQuery("");
+    setConversationName("");
+    setIsModalOpen(false);
+  };
+
   return (
-    <div style={{ display: "flex", height: "100vh", width: "100vw", maxWidth: "100%", 
-      maxHeight: "100%", overflow: "hidden", position: "fixed", top: 0, left: 0, 
-      margin: 0, padding: 0, boxSizing: "border-box" }}>
+    <div style={{
+      display: "flex", height: "100vh", width: "100vw", maxWidth: "100%",
+      maxHeight: "100%", overflow: "hidden", position: "fixed", top: 0, left: 0,
+      margin: 0, padding: 0, boxSizing: "border-box"
+    }}>
       {/* Sidebar */}
-      <div style={{ width: "250px", borderRight: "1px solid #ddd", background: "#f0f0f0", display: "flex", flexDirection: "column", overflowY: "auto"}}>
+      <div style={{ width: "250px", borderRight: "1px solid #ddd", background: "#f0f0f0", display: "flex", flexDirection: "column", overflowY: "auto" }}>
         <h3 style={{ padding: "15px" }}>Chats</h3>
-        <button 
-          onClick={() => setIsModalOpen(true)} 
+        <button
+          onClick={() => setIsModalOpen(true)}
           style={{ ...btnStyle, backgroundColor: "#ddd", margin: "10px" }}
         >+</button>
         {loadingConversations ? (
@@ -208,9 +266,24 @@ export default function Messages() {
                 padding: "12px",
                 cursor: "pointer",
                 background: activeConversationId === conv.id ? "#ddd" : "white",
+                display: "flex",
+                flexDirection: "column", // make name and participants stack
+                gap: "4px"
               }}
             >
-              {conv.name} {conv.is_group ? "(Group)" : "(Direct)"}
+              <strong>
+                {conv.name} {conv.is_group ? "(Group)" : "(Direct)"}
+              </strong>
+              <div style={{ fontSize: "14px", color: "#555" }}>
+                {conversations.find(c => c.id === activeConversationId)?.participants
+                  .filter(p => p.username !== currentUserEmail) // exclude logged-in user
+                  .map((p, idx, arr) => (
+                    <span key={p.id}>
+                      {p.username}{idx < arr.length - 1 ? ", " : ""}
+                    </span>
+                  ))
+                }
+              </div>
             </div>
           ))
         )}
@@ -222,6 +295,17 @@ export default function Messages() {
           <strong>
             {conversations.find(c => c.id === activeConversationId)?.name || "Select a chat"}
           </strong>
+          {/* List participants */}
+          <div style={{ fontSize: "14px", color: "#555" }}>
+            {conversations.find(c => c.id === activeConversationId)?.participants
+              .filter(p => p.username !== currentUserEmail) // exclude logged-in user
+              .map((p, idx, arr) => (
+                <span key={p.id}>
+                  {p.username}{idx < arr.length - 1 ? ", " : ""}
+                </span>
+              ))
+            }
+          </div>
         </div>
 
         <div style={{ flex: 1, padding: "15px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -265,29 +349,94 @@ export default function Messages() {
         </div>
       </div>
       {isModalOpen && (
-      <div style={{position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
-                    background: "rgba(0,0,0,0.5)", // Dims the background behind the popup 
-                    display: "flex", justifyContent: "center", 
-                    alignItems: "center", zIndex: 1000}}>
-        <div style={{background: "white", padding: "20px", borderRadius: "8px", 
-                  width: "300px", boxShadow: "0 2px 10px rgba(0,0,0,0.1)"}}>
-          <h3>New Chat</h3>
-          <input 
-            placeholder="Search users..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: "90%", padding: "8px", marginBottom: "10px" }}
-          />
+        <div style={{
+          position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+          background: "rgba(0,0,0,0.5)", // Dims the background behind the popup 
+          display: "flex", justifyContent: "center",
+          alignItems: "center", zIndex: 1000
+        }}>
+          <div style={{
+            background: "white", padding: "20px", borderRadius: "8px",
+            width: "300px", boxShadow: "0 2px 10px rgba(0,0,0,0.1)"
+          }}>
+            <h3>New Chat</h3>
+            <div style={{ position: "relative", width: "90%" }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "5px", marginBottom: "10px" }}>
+                {selectedUsers.map((username) => (
+                  <div
+                    key={username}
+                    onClick={() => toggleUser(username)}
+                    style={{
+                      padding: "5px 10px",
+                      background: "#075E54",
+                      color: "white",
+                      borderRadius: "15px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {username} ✕
+                  </div>
+                ))}
+              </div>
+              <input
+                placeholder="Conversationname"
+                value={newConversationName}
+                onChange={(e) => setConversationName(e.target.value)}
+                style={{ width: "100%", padding: "8px", marginBottom: "5px" }}
+              />
+              <input
+                placeholder="Search users..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ width: "100%", padding: "8px", marginBottom: "5px" }}
+              />
 
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
-            <button onClick={() => setIsModalOpen(false)} style={{ padding: "8px", color: "#000000", background: "#ddd" }}>Cancel</button>
-            {/* Temp button with no functionality. Can be replaced to actually create a new chat once backend is sync. */}
-            <button type="button" style={{ ...btnStyle, backgroundColor: "#075E54", cursor: "default" }}>Create</button>
-            {/* <button onClick={handleCreateChat} style={{ padding: "8px", background: "#075E54", color: "white", borderRadius: "4px" }}>Create</button> */}
+              {/* Dropdown */}
+              {searchQuery && users.length > 0 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "100%",
+                    left: 0,
+                    right: 0,
+                    background: "white",
+                    border: "1px solid #ccc",
+                    borderRadius: "4px",
+                    maxHeight: "150px",
+                    overflowY: "auto",
+                    zIndex: 1001,
+                  }}
+                >
+                  {users.map((user) => (
+                    <div
+                      key={user.id}
+                      onClick={() => {
+                        toggleUser(user.username);
+                        setSearchQuery(""); // clear after select
+                      }}
+                      style={{
+                        padding: "8px",
+                        cursor: "pointer",
+                        background: selectedUsers.includes(user.username)
+                          ? "#ddd"
+                          : "white",
+                      }}
+                    >
+                      {user.username}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+              <button onClick={() => setIsModalOpen(false)} style={{ padding: "8px", color: "#000000", background: "#ddd" }}>Cancel</button>
+              {/* Temp button with no functionality. Can be replaced to actually create a new chat once backend is sync. */}
+              <button onClick={handleCreateChat} style={{ padding: "8px", background: "#075E54", color: "white", borderRadius: "4px" }}>Create</button>
+            </div>
           </div>
         </div>
-      </div>
-    )}
+      )}
     </div>
   );
 }

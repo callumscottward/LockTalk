@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 import uuid
+from django.utils import timezone
 
 class Conversation(models.Model):
     #Unique, randomly generated 128 but number that will be used to be more secure
@@ -27,9 +28,10 @@ class Conversation(models.Model):
 
     is_group = models.BooleanField(default=False)
 
+    latestUpdate = models.DateTimeField(default=timezone.now)
+
 
 class Message(models.Model):
-
     class MessageType(models.TextChoices):
         NORMAL = "normal", "Normal"
         SYSTEM = "system", "System"

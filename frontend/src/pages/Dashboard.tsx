@@ -207,6 +207,7 @@ export default function Messages() {
     fetchMessages();
   }, [activeConversationId, currentUserEmail]); // runs whenever conversation or user changes
 
+  //Searches for the user data when creating a conversation
   useEffect(() => {
     if (searchQuery.trim() === "") {
       setUsers([]);
@@ -219,6 +220,7 @@ export default function Messages() {
       .then(data => setUsers(data));
   }, [searchQuery]);
 
+  //The logic for actually selecting the user when creating a conversation
   const toggleUser = (username: string) => {
     setSelectedUsers(prev =>
       prev.includes(username)
@@ -227,6 +229,7 @@ export default function Messages() {
     );
   };
 
+  //Logic for cerating the chat when the button is pressed
   const handleCreateChat = () => {
     if (!selectedUsers.length || !conversationsSocketRef.current) return;
 

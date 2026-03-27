@@ -113,7 +113,7 @@ export default function Messages() {
             return [existing, ...updated];
           }
 
-          // ✅ CASE 2: New conversation → add to top
+          // CASE 2: New conversation → add to top
           setActiveConversationId(newConv.id);
           return [newConv, ...prev];
         });

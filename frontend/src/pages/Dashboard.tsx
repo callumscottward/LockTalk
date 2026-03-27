@@ -275,14 +275,24 @@ export default function Messages() {
                 {conv.name} {conv.is_group ? "(Group)" : "(Direct)"}
               </strong>
               <div style={{ fontSize: "14px", color: "#555" }}>
-                {conversations.find(c => c.id === activeConversationId)?.participants
-                  .filter(p => p.username !== currentUserEmail) // exclude logged-in user
-                  .map((p, idx, arr) => (
-                    <span key={p.id}>
-                      {p.username}{idx < arr.length - 1 ? ", " : ""}
+                {(() => {
+                  const others = conv.participants
+                    .filter(p => p.username !== currentUserEmail) || [];
+                  const maxDisplay = 3; // show at most 3 names
+                  const displayed = others.slice(0, maxDisplay);
+                  const remaining = others.length - displayed.length;
+
+                  return (
+                    <span style={{ fontSize: "12px", color: "#555" }}>
+                      {displayed.map((p, idx) => (
+                        <span key={p.id}>
+                          {p.username}{idx < displayed.length - 1 ? ", " : ""}
+                        </span>
+                      ))}
+                      {remaining > 0 ? `, ...` : ""}
                     </span>
-                  ))
-                }
+                  );
+                })()}
               </div>
             </div>
           ))
@@ -384,15 +394,16 @@ export default function Messages() {
                 onChange={(e) => setConversationName(e.target.value)}
                 style={{ width: "100%", padding: "8px", marginBottom: "5px" }}
               />
-              <input
+              {newConversationName && (<input
                 placeholder="Search users..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{ width: "100%", padding: "8px", marginBottom: "5px" }}
               />
+              )}
 
               {/* Dropdown */}
-              {searchQuery && users.length > 0 && (
+              {searchQuery && users.length > 0  && (
                 <div
                   style={{
                     position: "absolute",
@@ -431,7 +442,6 @@ export default function Messages() {
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
               <button onClick={() => setIsModalOpen(false)} style={{ padding: "8px", color: "#000000", background: "#ddd" }}>Cancel</button>
-              {/* Temp button with no functionality. Can be replaced to actually create a new chat once backend is sync. */}
               <button onClick={handleCreateChat} style={{ padding: "8px", background: "#075E54", color: "white", borderRadius: "4px" }}>Create</button>
             </div>
           </div>

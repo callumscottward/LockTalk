@@ -57,3 +57,19 @@ class Message(models.Model):
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
+
+class Log(models.Model):
+    EVENT_CHOICES = [
+        ('SMS', 'SMS'),
+        ('LOGIN', 'Login'),
+        ('REGISTER', 'Register')
+    ]
+
+    event_type = models.CharField(max_length=50, choices=EVENT_CHOICES)
+    sender = models.CharField(max_length=255)
+    receiver = models.CharField(max_length=255)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    success = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.event_type} from {self.sender} to {self.receiver}"

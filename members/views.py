@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import User
+from user_messages.models import Log
 from django.contrib.auth import authenticate, login, logout, get_user_model
 
 from .forms import CustomUserCreationForm
@@ -34,6 +35,12 @@ class login_api(APIView):
 
         if user:
             login(request, user)
+            Log.objects.create(
+                event_type='LOGIN',
+                sender=user.username,
+                receiver=user.username,
+                success=True
+            )
             return Response({
                 "success": True,
                 "message": "Login successful",
@@ -42,6 +49,13 @@ class login_api(APIView):
                     "username": user.username
                 }
             })
+        else:
+            Log.objects.create(
+                event_type='LOGIN',
+                sender=email,
+                receiver=email,
+                success=False
+            )
 
         return Response({
             "success": False,
@@ -67,6 +81,13 @@ class register_api(APIView):
             email = form.cleaned_data["email"]
             password = form.cleaned_data["password1"]
 
+# Log successful registration
+            Log.objects.create(
+                event_type='REGISTER',
+                sender='SYSTEM',       # system-created event
+                receiver=user.username, # the newly created user                    success=True
+            )
+
             user = authenticate(request, username=email, password=password)
 
             if user is not None:
@@ -76,6 +97,13 @@ class register_api(APIView):
                     "success": True,
                     "message": "Account created successfully"
                 })
+            else:
+                Log.objects.creat(
+                    event_type='REGISTER',
+                    sender='SYSTEM',
+                    receiver=user.username,
+                    success=False
+                )
 
             return Response({
                 "success": False,

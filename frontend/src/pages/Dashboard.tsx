@@ -36,13 +36,18 @@ export default function Messages() {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [newConversationName, setConversationName] = useState("")
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [hoveredMessageId, setHoveredMessageId] = useState<number | null>(null);
+  const [hoveredConvId, setHoveredConvId] = useState<string | null>(null);
 
   const socketRef = useRef<WebSocket | null>(null);
   const conversationsSocketRef = useRef<WebSocket | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const authHeaders = {
     "Content-Type": "application/json",
   };
+  
 
   // Fetch current user once you reach the dashboard website
   useEffect(() => {
@@ -101,7 +106,7 @@ export default function Messages() {
             if (conv.participants.length !== newConv.participants.length) return false;
 
             const set = new Set(conv.participants.map(p => p.username));
-            return newConv.participants.every(p => set.has(p.username));
+            return newConv.participants.every((p: { username: string; }) => set.has(p.username));
           });
 
           // CASE 1: Conversation already exists → move to top
@@ -144,7 +149,8 @@ export default function Messages() {
             id: Date.now(), // temporary id
             sender: data.sender_email,
             text: data.content,
-            is_me: data.sender_email === currentUserEmail
+            // the .trim().toLowerCase() ensures they are identical
+            is_me: data.sender_email.trim().toLowerCase() === currentUserEmail?.trim().toLowerCase()
           }
         ]);
 
@@ -169,6 +175,19 @@ export default function Messages() {
 
     socketRef.current.send(JSON.stringify({ message: messageInput }));
     setMessageInput("");
+  };
+
+  const handleDeleteMessage = async (messageId: number) => {
+    if (!window.confirm("Delete this message?")) return;
+  // Put in backend API call to actually delete the message
+  setMessages(prev => prev.filter(m => m.id !== messageId));
+  };
+
+const handleDeleteConversation = async (convId: string) => {
+  if (!window.confirm("Delete this entire conversation?")) return;
+  // Put in backend API call to actually delete the message
+  setConversations(prev => prev.filter(c => c.id !== convId));
+  if (activeConversationId === convId) setActiveConversationId(null);
   };
 
   // Fetch existing messages whenever a conversation is selected
@@ -220,6 +239,17 @@ export default function Messages() {
       .then(data => setUsers(data));
   }, [searchQuery]);
 
+  useEffect(() => {
+  const handleClickOutside = (event: MouseEvent) => {
+    // Menu options (3 dots)
+    if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      setIsMenuOpen(false);
+    }
+  };
+  document.addEventListener("mousedown", handleClickOutside);
+  return () => document.removeEventListener("mousedown", handleClickOutside);
+}, []);
+
   //The logic for actually selecting the user when creating a conversation
   const toggleUser = (username: string) => {
     setSelectedUsers(prev =>
@@ -264,19 +294,25 @@ export default function Messages() {
           conversations.map(conv => (
             <div
               key={conv.id}
+              // Mouse hovering
+              onMouseEnter={() => setHoveredConvId(conv.id)}
+              onMouseLeave={() => setHoveredConvId(null)}
               onClick={() => setActiveConversationId(conv.id)}
               style={{
-                padding: "12px",
-                cursor: "pointer",
-                background: activeConversationId === conv.id ? "#ddd" : "white",
-                display: "flex",
-                flexDirection: "column", // make name and participants stack
-                gap: "4px"
-              }}
-            >
-              <strong>
-                {conv.name} {conv.is_group ? "(Group)" : "(Direct)"}
-              </strong>
+              padding: "12px",
+              cursor: "pointer",
+              background: activeConversationId === conv.id ? "#ddd" : "white",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              position: "relative",
+              borderBottom: "1px solid #eee"
+            }}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              <strong>{conv.name}</strong>
+              {/* ... your participant mapping code ... */}
+            </div>
               <div style={{ fontSize: "14px", color: "#555" }}>
                 {(() => {
                   const others = conv.participants
@@ -297,6 +333,18 @@ export default function Messages() {
                   );
                 })()}
               </div>
+              {/* Delete Chat Button */}
+              {hoveredConvId === conv.id && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevents clicking the chat when deleting it
+                    handleDeleteConversation(conv.id);
+                  }}
+                  style={{ background: "none", border: "none", color: "#ff4d4d", cursor: "pointer", fontSize: "14px", padding: "0 5px", fontWeight: "bold"}}
+                  >
+                    ✕
+                  </button>
+              )}
             </div>
           ))
         )}
@@ -304,7 +352,7 @@ export default function Messages() {
 
       {/* Chat Window */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "15px", borderBottom: "1px solid #ddd", background: "#eee" }}>
+        <div style={{ padding: "15px", borderBottom: "1px solid #ddd", background: "#eee", display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative" }}>
           <strong>
             {conversations.find(c => c.id === activeConversationId)?.name || "Select a chat"}
           </strong>
@@ -319,7 +367,44 @@ export default function Messages() {
               ))
             }
           </div>
+          {/* 3-Dot Menu Container */}
+          <div ref={menuRef} style={{ position: "relative" }}>
+            <button 
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              style={{ 
+                background: "none", border: "none", fontSize: "20px", cursor: "pointer", padding: "5px" 
+              }}
+            >
+              ⋮
+            </button>
+
+            {isMenuOpen && (
+              <div style={{
+                position: "absolute",
+                top: "50px",
+                right: "10px",
+                background: "white",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                borderRadius: "8px",
+                zIndex: 2000,
+                width: "180px",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden"
+              }}>
+                <button style={menuItemStyle} onClick={() => window.location.href = "/UserProfile"}>User Profile</button>
+                <button style={menuItemStyle} onClick={() => window.location.href = "/UserManagement"}>User Management</button>
+                <button style={menuItemStyle} onClick={() => window.location.href = "/Logs"}>Logs</button>
+                <hr style={{ margin: 0, border: "none", borderTop: "1px solid #eee" }} />
+                <button 
+                  style={{ ...menuItemStyle, color: "red" }} 
+                  // Needs actual backend logout functionality
+                  onClick={() => window.location.href = "/Login"}>Log Out</button>
+              </div>
+            )}
+          </div>
         </div>
+
 
         <div style={{ flex: 1, padding: "15px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "10px" }}>
           {messages.length === 0 ? (
@@ -328,6 +413,9 @@ export default function Messages() {
             messages.map(msg => (
               <div
                 key={msg.id}
+                // Logic for hovering
+                onMouseEnter={() => setHoveredMessageId(msg.id)}
+                onMouseLeave={() => setHoveredMessageId(null)}
                 style={{
                   alignSelf: msg.is_me ? "flex-end" : "flex-start",
                   background: msg.is_me ? "#075E54" : "#fff",
@@ -335,10 +423,24 @@ export default function Messages() {
                   padding: "8px 12px",
                   borderRadius: "8px",
                   maxWidth: "70%",
-                }}
-              >
+                  display: "flex",
+                  flexDirection: 'row',
+                  alignItems: "center",
+                  gap: "5px",
+                  position: 'relative'
+                }}>
                 {!msg.is_me && <div style={{ fontWeight: "bold" }}>{msg.sender}</div>}
                 <div>{msg.text}</div>
+                
+                {/* Delete Button - Only shows on hover for your own message */}
+                    {hoveredMessageId === msg.id && msg.is_me && (
+                      <button
+                        onClick={() => handleDeleteMessage(msg.id)}
+                        style={{ background: "none", border: "none", color: "#ff4d4d", cursor: "pointer", fontSize: "14px", padding: "0 5px", fontWeight: "bold"}}
+                      >
+                        ✕
+                      </button>
+                    )}
               </div>
             ))
           )}
@@ -462,4 +564,16 @@ const btnStyle: React.CSSProperties = {
   color: "#f0f0f0",
   cursor: "pointer",
   fontWeight: "bold",
+};
+
+const menuItemStyle: React.CSSProperties = {
+  padding: "12px 16px",
+  background: "none",
+  border: "none",
+  textAlign: "left",
+  cursor: "pointer",
+  fontSize: "14px",
+  width: "100%",
+  transition: "background 0.2s",
+  color: "#333"
 };

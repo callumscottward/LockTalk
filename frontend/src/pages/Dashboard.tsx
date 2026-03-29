@@ -47,7 +47,7 @@ export default function Messages() {
   const authHeaders = {
     "Content-Type": "application/json",
   };
-  
+
 
   // Fetch current user once you reach the dashboard website
   useEffect(() => {
@@ -80,7 +80,8 @@ export default function Messages() {
         setConversations(sortedConversations);
         setActiveConversationId(sortedConversations[0].id);
       } catch (err) {
-        console.error(err);
+        //console.error(err);
+        console.log("No Conversation Exists Yet")
       } finally {
         setLoadingConversations(false);
       }
@@ -123,6 +124,16 @@ export default function Messages() {
           return [newConv, ...prev];
         });
       }
+
+      if (data.type === "conversation_deleted") {
+        setConversations(prev =>
+          prev.filter(c => c.id !== data.conversation_id)
+        );
+
+        setActiveConversationId(prev =>
+          prev === data.conversation_id ? null : prev
+        );
+      }
     };
 
     return () => ws.close();
@@ -146,7 +157,7 @@ export default function Messages() {
         setMessages(prev => [
           ...prev,
           {
-            id: Date.now(), // temporary id
+            id: data.message_id,
             sender: data.sender_email,
             text: data.content,
             // the .trim().toLowerCase() ensures they are identical
@@ -163,6 +174,12 @@ export default function Messages() {
           return [latestConversation, ...newList];
         })
       }
+
+      if (data.type === "message_deleted") {
+        setMessages(prev =>
+          prev.filter(m => m.id !== data.message_id)
+        );
+      }
     };
 
     // Cleanup on unmount
@@ -177,17 +194,22 @@ export default function Messages() {
     setMessageInput("");
   };
 
-  const handleDeleteMessage = async (messageId: number) => {
+  const handleDeleteMessage = (messageId: number) => {
     if (!window.confirm("Delete this message?")) return;
-  // Put in backend API call to actually delete the message
-  setMessages(prev => prev.filter(m => m.id !== messageId));
+
+    socketRef.current?.send(JSON.stringify({
+      action: "delete_message",
+      message_id: messageId
+    }));
   };
 
-const handleDeleteConversation = async (convId: string) => {
-  if (!window.confirm("Delete this entire conversation?")) return;
-  // Put in backend API call to actually delete the message
-  setConversations(prev => prev.filter(c => c.id !== convId));
-  if (activeConversationId === convId) setActiveConversationId(null);
+  const handleDeleteConversation = (convId) => {
+    if (!window.confirm("Delete this entire conversation?")) return;
+
+    conversationsSocketRef.current?.send(JSON.stringify({
+      action: "delete_conversation",
+      conversation_id: convId
+    }));
   };
 
   // Fetch existing messages whenever a conversation is selected
@@ -240,15 +262,15 @@ const handleDeleteConversation = async (convId: string) => {
   }, [searchQuery]);
 
   useEffect(() => {
-  const handleClickOutside = (event: MouseEvent) => {
-    // Menu options (3 dots)
-    if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-      setIsMenuOpen(false);
-    }
-  };
-  document.addEventListener("mousedown", handleClickOutside);
-  return () => document.removeEventListener("mousedown", handleClickOutside);
-}, []);
+    const handleClickOutside = (event: MouseEvent) => {
+      // Menu options (3 dots)
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   //The logic for actually selecting the user when creating a conversation
   const toggleUser = (username: string) => {
@@ -299,51 +321,67 @@ const handleDeleteConversation = async (convId: string) => {
               onMouseLeave={() => setHoveredConvId(null)}
               onClick={() => setActiveConversationId(conv.id)}
               style={{
-              padding: "12px",
-              cursor: "pointer",
-              background: activeConversationId === conv.id ? "#ddd" : "white",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              position: "relative",
-              borderBottom: "1px solid #eee"
-            }}
-          >
-            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-              <strong>{conv.name}</strong>
-              {/* ... your participant mapping code ... */}
-            </div>
-              <div style={{ fontSize: "14px", color: "#555" }}>
-                {(() => {
-                  const others = conv.participants
-                    .filter(p => p.username !== currentUserEmail) || [];
-                  const maxDisplay = 3; // show at most 3 names
-                  const displayed = others.slice(0, maxDisplay);
-                  const remaining = others.length - displayed.length;
+                padding: "12px",
+                cursor: "pointer",
+                background: activeConversationId === conv.id ? "#ddd" : "white",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                borderBottom: "1px solid #eee"
+              }}
+            >
+              {/* LEFT SIDE (column) */}
+              <div
+                style={{
+                  margin: "0 auto",
+                  textAlign: "center",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center"
+                }}
+              >
+                <strong>{conv.name}</strong>
 
-                  return (
-                    <span style={{ fontSize: "12px", color: "#555" }}>
-                      {displayed.map((p, idx) => (
-                        <span key={p.id}>
-                          {p.username}{idx < displayed.length - 1 ? ", " : ""}
-                        </span>
-                      ))}
-                      {remaining > 0 ? `, ...` : ""}
-                    </span>
-                  );
-                })()}
+                <span style={{ fontSize: "12px", color: "#555" }}>
+                  {(() => {
+                    const others = conv.participants
+                      .filter(p => p.username !== currentUserEmail) || [];
+                    const maxDisplay = 3;
+                    const displayed = others.slice(0, maxDisplay);
+                    const remaining = others.length - displayed.length;
+
+                    return (
+                      <>
+                        {displayed.map((p, idx) => (
+                          <span key={p.id}>
+                            {p.username}{idx < displayed.length - 1 ? ", " : ""}
+                          </span>
+                        ))}
+                        {remaining > 0 ? `, ...` : ""}
+                      </>
+                    );
+                  })()}
+                </span>
               </div>
-              {/* Delete Chat Button */}
+
+              {/* RIGHT SIDE (delete button) */}
               {hoveredConvId === conv.id && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation(); // Prevents clicking the chat when deleting it
                     handleDeleteConversation(conv.id);
                   }}
-                  style={{ background: "none", border: "none", color: "#ff4d4d", cursor: "pointer", fontSize: "14px", padding: "0 5px", fontWeight: "bold"}}
-                  >
-                    ✕
-                  </button>
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#ff4d4d",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                    fontWeight: "bold"
+                  }}
+                >
+                  ✕
+                </button>
               )}
             </div>
           ))
@@ -352,27 +390,59 @@ const handleDeleteConversation = async (convId: string) => {
 
       {/* Chat Window */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "15px", borderBottom: "1px solid #ddd", background: "#eee", display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative" }}>
-          <strong>
-            {conversations.find(c => c.id === activeConversationId)?.name || "Select a chat"}
-          </strong>
+        <div
+          style={{
+            padding: "15px",
+            borderBottom: "1px solid #ddd",
+            background: "#eee",
+            display: "flex",
+            alignItems: "center",
+            position: "relative"
+          }}
+        >
+          {/* CENTERED CONTENT */}
+          <div
+            style={{
+              margin: "0 auto",
+              textAlign: "center",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "4px"
+            }}
+          >
+            <strong>
+              {conversations.find(c => c.id === activeConversationId)?.name || "Select a chat"}
+            </strong>
           {/* List participants */}
-          <div style={{ fontSize: "14px", color: "#555" }}>
-            {conversations.find(c => c.id === activeConversationId)?.participants
-              .filter(p => p.username !== currentUserEmail) // exclude logged-in user
-              .map((p, idx, arr) => (
-                <span key={p.id}>
-                  {p.username}{idx < arr.length - 1 ? ", " : ""}
-                </span>
-              ))
-            }
+            <div style={{ fontSize: "14px", color: "#555" }}>
+              {conversations.find(c => c.id === activeConversationId)?.participants
+                ?.filter(p => p.username !== currentUserEmail)
+                .map((p, idx, arr) => (
+                  <span key={p.id}>
+                    {p.username}{idx < arr.length - 1 ? ", " : ""}
+                  </span>
+                ))
+              }
+            </div>
           </div>
+
           {/* 3-Dot Menu Container */}
-          <div ref={menuRef} style={{ position: "relative" }}>
-            <button 
+          <div
+            ref={menuRef}
+            style={{
+              position: "absolute",
+              right: "10px"
+            }}
+          >
+            <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              style={{ 
-                background: "none", border: "none", fontSize: "20px", cursor: "pointer", padding: "5px" 
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: "20px",
+                cursor: "pointer",
+                padding: "5px"
               }}
             >
               ⋮
@@ -380,25 +450,27 @@ const handleDeleteConversation = async (convId: string) => {
 
             {isMenuOpen && (
               <div style={{
-                position: "absolute",
-                top: "50px",
-                right: "10px",
-                background: "white",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                borderRadius: "8px",
-                zIndex: 2000,
-                width: "180px",
-                display: "flex",
-                flexDirection: "column",
-                overflow: "hidden"
-              }}>
+                  position: "absolute",
+                  top: "40px",
+                  right: "0",
+                  background: "white",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                  borderRadius: "8px",
+                  zIndex: 2000,
+                  width: "180px",
+                  display: "flex",
+                  flexDirection: "column",
+                  overflow: "hidden"
+                }}
+              >
                 <button style={menuItemStyle} onClick={() => window.location.href = "/UserProfile"}>User Profile</button>
                 <button style={menuItemStyle} onClick={() => window.location.href = "/UserManagement"}>User Management</button>
                 <button style={menuItemStyle} onClick={() => window.location.href = "/Logs"}>Logs</button>
+
                 <hr style={{ margin: 0, border: "none", borderTop: "1px solid #eee" }} />
-                <button 
-                  style={{ ...menuItemStyle, color: "red" }} 
-                  // Needs actual backend logout functionality
+
+                <button
+                  style={{ ...menuItemStyle, color: "red" }}
                   onClick={() => window.location.href = "/Login"}>Log Out</button>
               </div>
             )}
@@ -431,16 +503,16 @@ const handleDeleteConversation = async (convId: string) => {
                 }}>
                 {!msg.is_me && <div style={{ fontWeight: "bold" }}>{msg.sender}</div>}
                 <div>{msg.text}</div>
-                
+
                 {/* Delete Button - Only shows on hover for your own message */}
-                    {hoveredMessageId === msg.id && msg.is_me && (
-                      <button
-                        onClick={() => handleDeleteMessage(msg.id)}
-                        style={{ background: "none", border: "none", color: "#ff4d4d", cursor: "pointer", fontSize: "14px", padding: "0 5px", fontWeight: "bold"}}
-                      >
-                        ✕
-                      </button>
-                    )}
+                {hoveredMessageId === msg.id && msg.is_me && (
+                  <button
+                    onClick={() => handleDeleteMessage(msg.id)}
+                    style={{ background: "none", border: "none", color: "#ff4d4d", cursor: "pointer", fontSize: "14px", padding: "0 5px", fontWeight: "bold"}}
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
             ))
           )}
@@ -508,7 +580,7 @@ const handleDeleteConversation = async (convId: string) => {
               )}
 
               {/* Dropdown */}
-              {searchQuery && users.length > 0  && (
+              {searchQuery && users.length > 0 && (
                 <div
                   style={{
                     position: "absolute",

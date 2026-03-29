@@ -44,6 +44,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         data = json.loads(text_data)
+
+        if data.get("action") == "delete_message":
+            await self.delete_message(data)
+            return
+
+        
         message = data.get("message")
         if not message:
             return
@@ -65,6 +71,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 "content": details.content,
                 "sender_email": self.user.email,
                 "sender_name": f"{self.user.first_name} {self.user.last_name}",
+                "message_id": details.id,
             }
         )
         
@@ -79,6 +86,43 @@ class ChatConsumer(AsyncWebsocketConsumer):
             "content": event["content"],
             "sender_email": event["sender_email"],
             "sender_name": event["sender_name"],
+            "message_id": event["message_id"],
+        }))
+        
+    async def delete_message(self, content):
+        user = self.scope["user"]
+        message_id = content.get("message_id")
+
+        try:
+            message = await database_sync_to_async(
+                Message.objects.get
+            )(id=message_id)
+
+            # Only allow sender to delete
+            if message.sender != user:
+                return
+
+            # Save conversation group before delete
+            group_name = self.group_name
+
+            await database_sync_to_async(message.delete)()
+
+            # Broadcast deletion
+            await self.channel_layer.group_send(
+                group_name,
+                {
+                    "type": "message_deleted",
+                    "message_id": message_id
+                }
+            )
+
+        except Message.DoesNotExist:
+            pass
+        
+    async def message_deleted(self, event):
+        await self.send(text_data=json.dumps({
+            "type": "message_deleted",
+            "message_id": event["message_id"]
         }))
 
 class ConversationConsumer(AsyncJsonWebsocketConsumer):
@@ -91,6 +135,8 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
         # Join user-specific group
         self.group_name = f"user_{self.user.id}"
         await self.channel_layer.group_add(self.group_name, self.channel_name)
+        await self.channel_layer.group_add("conversations", self.channel_name)
+
 
         await self.accept()
         
@@ -100,6 +146,8 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
 
         if action == "create_group":
             await self.create_group(content)
+        elif action == "delete_conversation":
+            await self.delete_conversation(content)
 
     async def create_group(self, content):
         user = self.scope["user"]
@@ -167,4 +215,42 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
         await self.send_json({
             "type": "new_conversation",
             "conversation": event["conversation"]
+        })
+        
+    async def delete_conversation(self, content):
+        user = self.scope["user"]
+        conv_id = content.get("conversation_id")
+
+        try:
+            conversation = await database_sync_to_async(
+                Conversation.objects.get
+            )(id=conv_id)
+
+            # For Later when we restrict this to moderator only
+            #if user != conversation.moderator:
+            #    return
+
+            # Get participants BEFORE deleting (for broadcast)
+            participants = await database_sync_to_async(
+                lambda: list(conversation.participants.all())
+            )()
+
+            # Delete conversation (messages auto-delete via CASCADE)
+            await database_sync_to_async(conversation.delete)()
+
+            await self.channel_layer.group_send(
+                "conversations",
+                {
+                    "type": "conversation_deleted",
+                    "conversation_id": conv_id
+                }
+            )
+
+        except Conversation.DoesNotExist:
+            pass
+        
+    async def conversation_deleted(self, event):
+        await self.send_json({
+            "type": "conversation_deleted",
+            "conversation_id": event["conversation_id"]
         })

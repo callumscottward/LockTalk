@@ -44,41 +44,40 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         data = json.loads(text_data)
+        action = data.get("action")
 
-        if data.get("action") == "delete_message":
+        if action == "delete_message":
             await self.delete_message(data)
-            return
-
-        
-        message = data.get("message")
-        if not message:
-            return
-        
-         # Save message to database
-        details = await database_sync_to_async(
-            lambda: Message.objects.create(
-                conversation=self.conversation,
-                sender=self.user,
-                content=message
-        )
-        )()
-        
-        # Broadcast to group
-        await self.channel_layer.group_send(
-            self.group_name,
-            {
-                "type": "chat_message",
-                "content": details.content,
-                "sender_email": self.user.email,
-                "sender_name": f"{self.user.first_name} {self.user.last_name}",
-                "message_id": details.id,
-            }
-        )
-        
-        await database_sync_to_async(
-            lambda: Conversation.objects.filter(id=self.conversation_id)
-            .update(latestUpdate=timezone.now())
-        )()
+        else:
+            message = data.get("message")
+            if not message:
+                return
+            
+            # Save message to database
+            details = await database_sync_to_async(
+                lambda: Message.objects.create(
+                    conversation=self.conversation,
+                    sender=self.user,
+                    content=message
+            )
+            )()
+            
+            # Broadcast to group
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    "type": "chat_message",
+                    "content": details.content,
+                    "sender_email": self.user.email,
+                    "sender_name": f"{self.user.first_name} {self.user.last_name}",
+                    "message_id": details.id,
+                }
+            )
+            
+            await database_sync_to_async(
+                lambda: Conversation.objects.filter(id=self.conversation_id)
+                .update(latestUpdate=timezone.now())
+            )()
 
     async def chat_message(self, event):
         await self.send(text_data=json.dumps({
@@ -94,31 +93,19 @@ class ChatConsumer(AsyncWebsocketConsumer):
         message_id = content.get("message_id")
 
         try:
-            message = await database_sync_to_async(
-                Message.objects.get
-            )(id=message_id)
-
-            # Only allow sender to delete
-            if message.sender != user:
+            message = await database_sync_to_async(lambda: Message.objects.get(id=message_id))()
+            if message.sender_id != user.id:
                 return
 
-            # Save conversation group before delete
-            group_name = self.group_name
+            await database_sync_to_async(lambda: message.delete())()
 
-            await database_sync_to_async(message.delete)()
-
-            # Broadcast deletion
             await self.channel_layer.group_send(
-                group_name,
-                {
-                    "type": "message_deleted",
-                    "message_id": message_id
-                }
+                self.group_name,
+                {"type": "message_deleted", "message_id": message_id}
             )
-
         except Message.DoesNotExist:
             pass
-        
+            
     async def message_deleted(self, event):
         await self.send(text_data=json.dumps({
             "type": "message_deleted",

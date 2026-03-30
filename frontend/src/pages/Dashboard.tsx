@@ -23,6 +23,21 @@ interface User {
   username: string;
 }
 
+function getCookie(name: string) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== "") {
+    const cookies = document.cookie.split(";");
+    for (let cookie of cookies) {
+      cookie = cookie.trim();
+      if (cookie.startsWith(name + "=")) {
+        cookieValue = cookie.substring(name.length + 1);
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
 export default function Messages() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -183,7 +198,9 @@ export default function Messages() {
     };
 
     // Cleanup on unmount
-    return () => ws.close();
+    return () => {
+      if (ws.readyState === 1) ws.close();
+    };
   }, [activeConversationId, currentUserEmail]);
 
   // Send message via WebSocket
@@ -203,13 +220,35 @@ export default function Messages() {
     }));
   };
 
-  const handleDeleteConversation = (convId) => {
+  const handleDeleteConversation = (convId: string) => {
     if (!window.confirm("Delete this entire conversation?")) return;
 
     conversationsSocketRef.current?.send(JSON.stringify({
       action: "delete_conversation",
       conversation_id: convId
     }));
+  };
+
+  const handleLogout = async () => {
+    try {
+      const csrfToken = getCookie("csrftoken");
+
+      const res = await fetch("http://localhost:8000/api/logout/", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "X-CSRFToken": csrfToken || "",
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error("Logout failed");
+      }
+
+      window.location.href = "/Login";
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
   };
 
   // Fetch existing messages whenever a conversation is selected
@@ -414,7 +453,7 @@ export default function Messages() {
             <strong>
               {conversations.find(c => c.id === activeConversationId)?.name || "Select a chat"}
             </strong>
-          {/* List participants */}
+            {/* List participants */}
             <div style={{ fontSize: "14px", color: "#555" }}>
               {conversations.find(c => c.id === activeConversationId)?.participants
                 ?.filter(p => p.username !== currentUserEmail)
@@ -450,18 +489,18 @@ export default function Messages() {
 
             {isMenuOpen && (
               <div style={{
-                  position: "absolute",
-                  top: "40px",
-                  right: "0",
-                  background: "white",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                  borderRadius: "8px",
-                  zIndex: 2000,
-                  width: "180px",
-                  display: "flex",
-                  flexDirection: "column",
-                  overflow: "hidden"
-                }}
+                position: "absolute",
+                top: "40px",
+                right: "0",
+                background: "white",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                borderRadius: "8px",
+                zIndex: 2000,
+                width: "180px",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden"
+              }}
               >
                 <button style={menuItemStyle} onClick={() => window.location.href = "/UserProfile"}>User Profile</button>
                 <button style={menuItemStyle} onClick={() => window.location.href = "/UserManagement"}>User Management</button>
@@ -471,7 +510,7 @@ export default function Messages() {
 
                 <button
                   style={{ ...menuItemStyle, color: "red" }}
-                  onClick={() => window.location.href = "/Login"}>Log Out</button>
+                  onClick={handleLogout}>Log Out</button>
               </div>
             )}
           </div>

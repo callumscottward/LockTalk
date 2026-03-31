@@ -38,7 +38,7 @@ class login_api(APIView):
             Log.objects.create(
                 event_type='LOGIN',
                 sender=user.username,
-                receiver=user.username,
+                receiver='SYSTEM',
                 success=True
             )
             return Response({
@@ -53,7 +53,7 @@ class login_api(APIView):
             Log.objects.create(
                 event_type='LOGIN',
                 sender=email,
-                receiver=email,
+                receiver='SYSTEM',
                 success=False
             )
 
@@ -98,7 +98,7 @@ class register_api(APIView):
                     "message": "Account created successfully"
                 })
             else:
-                Log.objects.creat(
+                Log.objects.create(
                     event_type='REGISTER',
                     sender='SYSTEM',
                     receiver=user.username,

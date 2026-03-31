@@ -74,12 +74,6 @@ class MessageCreateView(APIView):
             sender=request.user,
             content=content
         )
-        Log.objects.create(
-            event_type='SMS',
-            sender=request.user.username,
-            receiver=request.user.username,
-            success=True
-        )   
 
         serializer = MessageSerializer(message)
         return Response(serializer.data, status=status.HTTP_201_CREATED)

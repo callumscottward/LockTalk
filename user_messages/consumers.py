@@ -44,34 +44,40 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         data = json.loads(text_data)
-        message = data.get("message")
-        if not message:
-            return
-        
-         # Save message to database
-        details = await database_sync_to_async(
-            lambda: Message.objects.create(
-                conversation=self.conversation,
-                sender=self.user,
-                content=message
-        )
-        )()
-        
-        # Broadcast to group
-        await self.channel_layer.group_send(
-            self.group_name,
-            {
-                "type": "chat_message",
-                "content": details.content,
-                "sender_email": self.user.email,
-                "sender_name": f"{self.user.first_name} {self.user.last_name}",
-            }
-        )
-        
-        await database_sync_to_async(
-            lambda: Conversation.objects.filter(id=self.conversation_id)
-            .update(latestUpdate=timezone.now())
-        )()
+        action = data.get("action")
+
+        if action == "delete_message":
+            await self.delete_message(data)
+        else:
+            message = data.get("message")
+            if not message:
+                return
+            
+            # Save message to database
+            details = await database_sync_to_async(
+                lambda: Message.objects.create(
+                    conversation=self.conversation,
+                    sender=self.user,
+                    content=message
+            )
+            )()
+            
+            # Broadcast to group
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    "type": "chat_message",
+                    "content": details.content,
+                    "sender_email": self.user.email,
+                    "sender_name": f"{self.user.first_name} {self.user.last_name}",
+                    "message_id": details.id,
+                }
+            )
+            
+            await database_sync_to_async(
+                lambda: Conversation.objects.filter(id=self.conversation_id)
+                .update(latestUpdate=timezone.now())
+            )()
 
     async def chat_message(self, event):
         await self.send(text_data=json.dumps({
@@ -79,6 +85,31 @@ class ChatConsumer(AsyncWebsocketConsumer):
             "content": event["content"],
             "sender_email": event["sender_email"],
             "sender_name": event["sender_name"],
+            "message_id": event["message_id"],
+        }))
+        
+    async def delete_message(self, content):
+        user = self.scope["user"]
+        message_id = content.get("message_id")
+
+        try:
+            message = await database_sync_to_async(lambda: Message.objects.get(id=message_id))()
+            if message.sender_id != user.id:
+                return
+
+            await database_sync_to_async(lambda: message.delete())()
+
+            await self.channel_layer.group_send(
+                self.group_name,
+                {"type": "message_deleted", "message_id": message_id}
+            )
+        except Message.DoesNotExist:
+            pass
+            
+    async def message_deleted(self, event):
+        await self.send(text_data=json.dumps({
+            "type": "message_deleted",
+            "message_id": event["message_id"]
         }))
 
 class ConversationConsumer(AsyncJsonWebsocketConsumer):
@@ -91,6 +122,8 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
         # Join user-specific group
         self.group_name = f"user_{self.user.id}"
         await self.channel_layer.group_add(self.group_name, self.channel_name)
+        await self.channel_layer.group_add("conversations", self.channel_name)
+
 
         await self.accept()
         
@@ -100,6 +133,8 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
 
         if action == "create_group":
             await self.create_group(content)
+        elif action == "delete_conversation":
+            await self.delete_conversation(content)
 
     async def create_group(self, content):
         user = self.scope["user"]
@@ -167,4 +202,42 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
         await self.send_json({
             "type": "new_conversation",
             "conversation": event["conversation"]
+        })
+        
+    async def delete_conversation(self, content):
+        user = self.scope["user"]
+        conv_id = content.get("conversation_id")
+
+        try:
+            conversation = await database_sync_to_async(
+                Conversation.objects.get
+            )(id=conv_id)
+
+            # For Later when we restrict this to moderator only
+            #if user != conversation.moderator:
+            #    return
+
+            # Get participants BEFORE deleting (for broadcast)
+            participants = await database_sync_to_async(
+                lambda: list(conversation.participants.all())
+            )()
+
+            # Delete conversation (messages auto-delete via CASCADE)
+            await database_sync_to_async(conversation.delete)()
+
+            await self.channel_layer.group_send(
+                "conversations",
+                {
+                    "type": "conversation_deleted",
+                    "conversation_id": conv_id
+                }
+            )
+
+        except Conversation.DoesNotExist:
+            pass
+        
+    async def conversation_deleted(self, event):
+        await self.send_json({
+            "type": "conversation_deleted",
+            "conversation_id": event["conversation_id"]
         })

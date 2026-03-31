@@ -1,13 +1,34 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function UserProfile() {
-  // Temp user for show
-  const [user] = useState({
-    username: 'emma.wilson',
-    email: 'emmaW@gmail',
-    phone: '+1 (402) 012-3456',
-    role: 'Admin'
-  });
+
+  // The current calls
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [currentUserUsername, setCurrentUserUsername] = useState<string | null>(null);
+
+  const authHeaders = {
+    "Content-Type": "application/json",
+  };
+
+ // Fetch current user once you reach account details
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/api/me/", {
+          headers: authHeaders,
+          credentials: "include"
+        });
+        const data = await res.json();
+        setCurrentUserRole(data.role);
+        setCurrentUserUsername(data.username);
+        setCurrentUserEmail(data.email);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchUser();
+  }, []);
 
   return (
     // Default styless
@@ -26,18 +47,30 @@ export default function UserProfile() {
       padding: 0,
       position: 'fixed',
       top: 0,
-      left: 0
+      left: 0,
+      flexDirection: 'column'
     }}>
-      <div style={{ 
-        width: '100%', 
-        maxWidth: '500px', 
-        background: 'white', 
-        padding: '40px', 
-        borderRadius: '12px', 
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)' 
-      }}>
 
-
+        <button 
+          onClick={() => window.location.href = "/Dashboard"} 
+          style={{
+            background: "none",
+            border: "none",
+            color: "#000",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            padding: "0",
+            marginBottom: "1px",
+            fontSize: "2rem",
+            fontWeight: "500",
+            marginTop: "-15px",
+            position: 'absolute',
+            top: '30px',
+            left: '30px'
+          }}>
+          <span style={{ marginRight: "5px" }}>←</span>
+        </button>
 
         <h1 style={{ borderBottom: '2px solid #075E54', paddingBottom: '10px', marginBottom: '30px' }}>
           Account Details
@@ -47,22 +80,19 @@ export default function UserProfile() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div>
             <label style={{ fontWeight: 'bold', color: 'gray', display: 'block', fontSize: '0.8rem', textTransform: 'uppercase' }}>Username</label>
-            <div style={{ fontSize: '1.2rem', marginTop: '5px' }}>{user.username}</div>
+            <div style={{ fontSize: '1.2rem', marginTop: '5px' }}>{currentUserUsername}</div>
           </div>
 
           <div>
             <label style={{ fontWeight: 'bold', color: 'gray', display: 'block', fontSize: '0.8rem', textTransform: 'uppercase' }}>Role</label>
-            <div style={{ fontSize: '1.1rem', marginTop: '5px', color: '#075E54', fontWeight: 'bold' }}>{user.role}</div>
+            {/* <div style={{ fontSize: '1.1rem', marginTop: '5px', color: '#075E54', fontWeight: 'bold' }}>{currentUserRole}</div> */}
+            <div style={{ fontSize: '1.1rem', marginTop: '5px', color: '#075E54', fontWeight: 'bold' }}>{"Admin"}</div>
           </div>
 
+          {/* Username is saved as email */}
           <div>
             <label style={{ fontWeight: 'bold', color: 'gray', display: 'block', fontSize: '0.8rem', textTransform: 'uppercase' }}>Email Address</label>
-            <div style={{ fontSize: '1.1rem', marginTop: '5px' }}>{user.email}</div>
-          </div>
-
-          <div>
-            <label style={{ fontWeight: 'bold', color: 'gray', display: 'block', fontSize: '0.8rem', textTransform: 'uppercase' }}>Phone Number</label>
-            <div style={{ fontSize: '1.1rem', marginTop: '5px' }}>{user.phone}</div>
+            <div style={{ fontSize: '1.1rem', marginTop: '5px' }}>{currentUserEmail}</div>
           </div>
         </div>
 
@@ -87,6 +117,5 @@ export default function UserProfile() {
           </button>
         </div>
       </div>
-    </div>
   );
 }

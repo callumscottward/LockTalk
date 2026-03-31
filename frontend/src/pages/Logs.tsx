@@ -27,6 +27,25 @@ export default function Logs() {
       
       {/* Header */}
       <div style={{ marginBottom: "20px", flexShrink: 0 }}>
+        {/* Back Button */}
+        <button 
+          onClick={() => window.location.href = "/Dashboard"} 
+          style={{
+            background: "none",
+            border: "none",
+            color: "#000",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            padding: "0",
+            marginBottom: "1px",
+            fontSize: "2rem",
+            fontWeight: "500",
+            marginTop: "-15px"
+          }}>
+          <span style={{ marginRight: "5px" }}>←</span>
+        </button>
+
         <h2 style={{ margin: "0 0 15px 0" }}>User Management</h2>
         
         {/* Search Bar */}

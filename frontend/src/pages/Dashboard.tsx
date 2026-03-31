@@ -23,6 +23,21 @@ interface User {
   username: string;
 }
 
+function getCookie(name: string) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== "") {
+    const cookies = document.cookie.split(";");
+    for (let cookie of cookies) {
+      cookie = cookie.trim();
+      if (cookie.startsWith(name + "=")) {
+        cookieValue = cookie.substring(name.length + 1);
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
 export default function Messages() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -36,13 +51,18 @@ export default function Messages() {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [newConversationName, setConversationName] = useState("")
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [hoveredMessageId, setHoveredMessageId] = useState<number | null>(null);
+  const [hoveredConvId, setHoveredConvId] = useState<string | null>(null);
 
   const socketRef = useRef<WebSocket | null>(null);
   const conversationsSocketRef = useRef<WebSocket | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const authHeaders = {
     "Content-Type": "application/json",
   };
+
 
   // Fetch current user once you reach the dashboard website
   useEffect(() => {
@@ -75,7 +95,8 @@ export default function Messages() {
         setConversations(sortedConversations);
         setActiveConversationId(sortedConversations[0].id);
       } catch (err) {
-        console.error(err);
+        //console.error(err);
+        console.log("No Conversation Exists Yet")
       } finally {
         setLoadingConversations(false);
       }
@@ -101,7 +122,7 @@ export default function Messages() {
             if (conv.participants.length !== newConv.participants.length) return false;
 
             const set = new Set(conv.participants.map(p => p.username));
-            return newConv.participants.every(p => set.has(p.username));
+            return newConv.participants.every((p: { username: string; }) => set.has(p.username));
           });
 
           // CASE 1: Conversation already exists → move to top
@@ -117,6 +138,16 @@ export default function Messages() {
           setActiveConversationId(newConv.id);
           return [newConv, ...prev];
         });
+      }
+
+      if (data.type === "conversation_deleted") {
+        setConversations(prev =>
+          prev.filter(c => c.id !== data.conversation_id)
+        );
+
+        setActiveConversationId(prev =>
+          prev === data.conversation_id ? null : prev
+        );
       }
     };
 
@@ -141,10 +172,11 @@ export default function Messages() {
         setMessages(prev => [
           ...prev,
           {
-            id: Date.now(), // temporary id
+            id: data.message_id,
             sender: data.sender_email,
             text: data.content,
-            is_me: data.sender_email === currentUserEmail
+            // the .trim().toLowerCase() ensures they are identical
+            is_me: data.sender_email.trim().toLowerCase() === currentUserEmail?.trim().toLowerCase()
           }
         ]);
 
@@ -157,10 +189,18 @@ export default function Messages() {
           return [latestConversation, ...newList];
         })
       }
+
+      if (data.type === "message_deleted") {
+        setMessages(prev =>
+          prev.filter(m => m.id !== data.message_id)
+        );
+      }
     };
 
     // Cleanup on unmount
-    return () => ws.close();
+    return () => {
+      if (ws.readyState === 1) ws.close();
+    };
   }, [activeConversationId, currentUserEmail]);
 
   // Send message via WebSocket
@@ -169,6 +209,46 @@ export default function Messages() {
 
     socketRef.current.send(JSON.stringify({ message: messageInput }));
     setMessageInput("");
+  };
+
+  const handleDeleteMessage = (messageId: number) => {
+    if (!window.confirm("Delete this message?")) return;
+
+    socketRef.current?.send(JSON.stringify({
+      action: "delete_message",
+      message_id: messageId
+    }));
+  };
+
+  const handleDeleteConversation = (convId: string) => {
+    if (!window.confirm("Delete this entire conversation?")) return;
+
+    conversationsSocketRef.current?.send(JSON.stringify({
+      action: "delete_conversation",
+      conversation_id: convId
+    }));
+  };
+
+  const handleLogout = async () => {
+    try {
+      const csrfToken = getCookie("csrftoken");
+
+      const res = await fetch("http://localhost:8000/api/logout/", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "X-CSRFToken": csrfToken || "",
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error("Logout failed");
+      }
+
+      window.location.href = "/Login";
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
   };
 
   // Fetch existing messages whenever a conversation is selected
@@ -220,6 +300,17 @@ export default function Messages() {
       .then(data => setUsers(data));
   }, [searchQuery]);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Menu options (3 dots)
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   //The logic for actually selecting the user when creating a conversation
   const toggleUser = (username: string) => {
     setSelectedUsers(prev =>
@@ -264,39 +355,73 @@ export default function Messages() {
           conversations.map(conv => (
             <div
               key={conv.id}
+              // Mouse hovering
+              onMouseEnter={() => setHoveredConvId(conv.id)}
+              onMouseLeave={() => setHoveredConvId(null)}
               onClick={() => setActiveConversationId(conv.id)}
               style={{
                 padding: "12px",
                 cursor: "pointer",
                 background: activeConversationId === conv.id ? "#ddd" : "white",
                 display: "flex",
-                flexDirection: "column", // make name and participants stack
-                gap: "4px"
+                justifyContent: "space-between",
+                alignItems: "center",
+                borderBottom: "1px solid #eee"
               }}
             >
-              <strong>
-                {conv.name} {conv.is_group ? "(Group)" : "(Direct)"}
-              </strong>
-              <div style={{ fontSize: "14px", color: "#555" }}>
-                {(() => {
-                  const others = conv.participants
-                    .filter(p => p.username !== currentUserEmail) || [];
-                  const maxDisplay = 3; // show at most 3 names
-                  const displayed = others.slice(0, maxDisplay);
-                  const remaining = others.length - displayed.length;
+              {/* LEFT SIDE (column) */}
+              <div
+                style={{
+                  margin: "0 auto",
+                  textAlign: "center",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center"
+                }}
+              >
+                <strong>{conv.name}</strong>
 
-                  return (
-                    <span style={{ fontSize: "12px", color: "#555" }}>
-                      {displayed.map((p, idx) => (
-                        <span key={p.id}>
-                          {p.username}{idx < displayed.length - 1 ? ", " : ""}
-                        </span>
-                      ))}
-                      {remaining > 0 ? `, ...` : ""}
-                    </span>
-                  );
-                })()}
+                <span style={{ fontSize: "12px", color: "#555" }}>
+                  {(() => {
+                    const others = conv.participants
+                      .filter(p => p.username !== currentUserEmail) || [];
+                    const maxDisplay = 3;
+                    const displayed = others.slice(0, maxDisplay);
+                    const remaining = others.length - displayed.length;
+
+                    return (
+                      <>
+                        {displayed.map((p, idx) => (
+                          <span key={p.id}>
+                            {p.username}{idx < displayed.length - 1 ? ", " : ""}
+                          </span>
+                        ))}
+                        {remaining > 0 ? `, ...` : ""}
+                      </>
+                    );
+                  })()}
+                </span>
               </div>
+
+              {/* RIGHT SIDE (delete button) */}
+              {hoveredConvId === conv.id && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevents clicking the chat when deleting it
+                    handleDeleteConversation(conv.id);
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#ff4d4d",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                    fontWeight: "bold"
+                  }}
+                >
+                  ✕
+                </button>
+              )}
             </div>
           ))
         )}
@@ -304,22 +429,93 @@ export default function Messages() {
 
       {/* Chat Window */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "15px", borderBottom: "1px solid #ddd", background: "#eee" }}>
-          <strong>
-            {conversations.find(c => c.id === activeConversationId)?.name || "Select a chat"}
-          </strong>
-          {/* List participants */}
-          <div style={{ fontSize: "14px", color: "#555" }}>
-            {conversations.find(c => c.id === activeConversationId)?.participants
-              .filter(p => p.username !== currentUserEmail) // exclude logged-in user
-              .map((p, idx, arr) => (
-                <span key={p.id}>
-                  {p.username}{idx < arr.length - 1 ? ", " : ""}
-                </span>
-              ))
-            }
+        <div
+          style={{
+            padding: "15px",
+            borderBottom: "1px solid #ddd",
+            background: "#eee",
+            display: "flex",
+            alignItems: "center",
+            position: "relative"
+          }}
+        >
+          {/* CENTERED CONTENT */}
+          <div
+            style={{
+              margin: "0 auto",
+              textAlign: "center",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "4px"
+            }}
+          >
+            <strong>
+              {conversations.find(c => c.id === activeConversationId)?.name || "Select a chat"}
+            </strong>
+            {/* List participants */}
+            <div style={{ fontSize: "14px", color: "#555" }}>
+              {conversations.find(c => c.id === activeConversationId)?.participants
+                ?.filter(p => p.username !== currentUserEmail)
+                .map((p, idx, arr) => (
+                  <span key={p.id}>
+                    {p.username}{idx < arr.length - 1 ? ", " : ""}
+                  </span>
+                ))
+              }
+            </div>
+          </div>
+
+          {/* 3-Dot Menu Container */}
+          <div
+            ref={menuRef}
+            style={{
+              position: "absolute",
+              right: "10px"
+            }}
+          >
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: "20px",
+                cursor: "pointer",
+                padding: "5px"
+              }}
+            >
+              ⋮
+            </button>
+
+            {isMenuOpen && (
+              <div style={{
+                position: "absolute",
+                top: "40px",
+                right: "0",
+                background: "white",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                borderRadius: "8px",
+                zIndex: 2000,
+                width: "180px",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden"
+              }}
+              >
+                <button style={menuItemStyle} onClick={() => window.location.href = "/UserProfile"}>User Profile</button>
+                <button style={menuItemStyle} onClick={() => window.location.href = "/UserManagement"}>User Management</button>
+                <button style={menuItemStyle} onClick={() => window.location.href = "/Logs"}>Logs</button>
+
+                <hr style={{ margin: 0, border: "none", borderTop: "1px solid #eee" }} />
+
+                <button
+                  style={{ ...menuItemStyle, color: "red" }}
+                  onClick={handleLogout}>Log Out</button>
+              </div>
+            )}
           </div>
         </div>
+
 
         <div style={{ flex: 1, padding: "15px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "10px" }}>
           {messages.length === 0 ? (
@@ -328,17 +524,55 @@ export default function Messages() {
             messages.map(msg => (
               <div
                 key={msg.id}
+                // Logic for hovering
+                onMouseEnter={() => setHoveredMessageId(msg.id)}
+                onMouseLeave={() => setHoveredMessageId(null)}
                 style={{
+                  display: "flex",
+                  flexDirection: "column",
                   alignSelf: msg.is_me ? "flex-end" : "flex-start",
-                  background: msg.is_me ? "#075E54" : "#fff",
-                  color: msg.is_me ? "#fff" : "#000",
-                  padding: "8px 12px",
-                  borderRadius: "8px",
                   maxWidth: "70%",
                 }}
               >
-                {!msg.is_me && <div style={{ fontWeight: "bold" }}>{msg.sender}</div>}
-                <div>{msg.text}</div>
+                {/* Name ABOVE the bubble */}
+                {!msg.is_me && (
+                  <div style={{ fontWeight: "bold", fontSize: "12px", marginBottom: "3px" }}>
+                    {msg.sender}
+                  </div>
+                )}
+
+                {/* Message bubble */}
+                <div
+                  style={{
+                    background: msg.is_me ? "#075E54" : "#d0d0d0ff",
+                    color: msg.is_me ? "#fff" : "#000",
+                    padding: "8px 12px",
+                    borderRadius: "8px",
+                    position: "relative"
+                  }}
+                >
+                  <div>{msg.text}</div>
+
+                  {/* Delete Button */}
+                  {hoveredMessageId === msg.id && msg.is_me && (
+                    <button
+                      onClick={() => handleDeleteMessage(msg.id)}
+                      style={{
+                        position: "absolute",
+                        top: "5px",
+                        right: "5px",
+                        background: "none",
+                        border: "none",
+                        color: "#ff4d4d",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        fontWeight: "bold"
+                      }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
               </div>
             ))
           )}
@@ -406,7 +640,7 @@ export default function Messages() {
               )}
 
               {/* Dropdown */}
-              {searchQuery && users.length > 0  && (
+              {searchQuery && users.length > 0 && (
                 <div
                   style={{
                     position: "absolute",
@@ -462,4 +696,16 @@ const btnStyle: React.CSSProperties = {
   color: "#f0f0f0",
   cursor: "pointer",
   fontWeight: "bold",
+};
+
+const menuItemStyle: React.CSSProperties = {
+  padding: "12px 16px",
+  background: "none",
+  border: "none",
+  textAlign: "left",
+  cursor: "pointer",
+  fontSize: "14px",
+  width: "100%",
+  transition: "background 0.2s",
+  color: "#333"
 };

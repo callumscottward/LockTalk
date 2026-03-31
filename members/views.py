@@ -63,10 +63,11 @@ class login_api(APIView):
         }, status=400)
     
 class LogoutAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
         logout(request)
-        return Response({"success": True})
-
+        return Response({"message": "Logged out successfully"})
 
 class register_api(APIView):
     permission_classes = [AllowAny]

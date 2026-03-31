@@ -1,17 +1,57 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+interface Log {
+  id: number;
+  event_type: string;
+  sender: string;
+  receiver: string;
+  success: boolean;
+  timestamp: string;
+}
 
 export default function Logs() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [logs, setLogs] = useState<Log[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // TEMP DATA. Delete when actual implementation is put in.
-  const logs = Array.from({ length: 10 }, (_, i) => ({
-    logNum: i + 1,
-    eventType: i % 2 === 0 ? "SMS" : "Login",
-    to: 'Mary',
-    from: 'Marge',
-    dateTime: '2026-03-21, 3:11PM',
-    status: i % 3 === 0 ? "Fail" : "Success",
-  }));
+  useEffect(() => {
+    async function fetchLogs() {
+      try {
+        const response = await fetch("http://localhost:8000/api/logs/", {
+          credentials: "include", // include session cookies if needed
+        });
+        if (!response.ok) throw new Error("Failed to fetch logs");
+
+        const data: Log[] = await response.json();
+        setLogs(data);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchLogs();
+  }, []);
+
+  // Filter logs based on searchTerm
+  const filteredLogs = logs.filter(log =>
+    log.sender.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    log.receiver.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    log.event_type.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  if (loading) return <p>Loading logs...</p>;
+
+  // // TEMP DATA. Delete when actual implementation is put in.
+  // const logs = Array.from({ length: 10 }, (_, i) => ({
+  //   logNum: i + 1,
+  //   eventType: i % 2 === 0 ? "SMS" : "Login",
+  //   to: 'Mary',
+  //   from: 'Marge',
+  //   dateTime: '2026-03-21, 3:11PM',
+  //   status: i % 3 === 0 ? "Fail" : "Success",
+  // }));
 
   return (
     <div style={{ 
@@ -114,13 +154,13 @@ export default function Logs() {
         <div style={{ flex: 1, overflowY: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
             <tbody>
-              {logs.map(user => (
-                <tr key={user.logNum} style={{ borderBottom: "1px solid #eee" }}>
-                  <td style={bodyStyle}>{user.eventType}</td>
-                  <td style={bodyStyle}>{user.to}</td>
-                  <td style={bodyStyle}>{user.from}</td>
-                  <td style={bodyStyle}>{user.dateTime}</td>
-                  <td style={bodyStyle}>{user.status}</td>
+              {logs.map((log) => (
+                <tr key={log.id} style={{ borderBottom: "1px solid #eee" }}>
+                  <td style={bodyStyle}>{log.event_type}</td>
+                  <td style={bodyStyle}>{log.receiver}</td>
+                  <td style={bodyStyle}>{log.sender}</td>
+                  <td style={bodyStyle}>{new Date(log.timestamp).toLocaleString()}</td>
+                  <td style={bodyStyle}>{log.success ? "Success" : "Fail"}</td>
                 </tr>
               ))}
             </tbody>

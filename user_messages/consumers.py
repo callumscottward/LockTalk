@@ -6,8 +6,21 @@ from .models import Conversation, Message
 from channels.db import database_sync_to_async
 from django.utils import timezone
 from django.db.models import Count
+from user_messages.models import Log
+
 
 User = get_user_model()
+
+@database_sync_to_async
+def create_logs(conversation, user):
+    other_participants = conversation.participants.exclude(id=user.id)
+    for participant in other_participants:
+        Log.objects.create(
+            event_type='SMS',
+            sender=user.username,
+            receiver=participant.username,
+            success=True
+        )
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -44,6 +57,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         data = json.loads(text_data)
+
         action = data.get("action")
 
         if action == "delete_message":
@@ -74,6 +88,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 }
             )
             
+            await create_logs(self.conversation, self.user)
+
             await database_sync_to_async(
                 lambda: Conversation.objects.filter(id=self.conversation_id)
                 .update(latestUpdate=timezone.now())

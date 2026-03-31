@@ -6,9 +6,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from django.contrib.auth import get_user_model
 from rest_framework import status
-from .models import Message, Conversation
+from .models import Message, Conversation, Log
 from .serializers import ConversationSerializer
 from .serializers import MessageSerializer
+from .serializers import LogSerializer
 
 User = get_user_model()
 
@@ -97,3 +98,11 @@ class ConversationCreateView(APIView):
 
         serializer = ConversationSerializer(conversation)
         return Response(serializer.data, status=201)
+    
+class LogListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        logs = Log.objects.all().order_by('-timestamp')  # newest first
+        serializer = LogSerializer(logs, many=True)
+        return Response(serializer.data)

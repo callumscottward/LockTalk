@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Conversation, Message
+from .models import Conversation, Message, Log
 
 class MessageSerializer(serializers.ModelSerializer):
     # We want the sender's username, not their ID number
@@ -65,3 +65,8 @@ class ConversationSerializer(serializers.ModelSerializer):
                 data["name"] = other.username if other else "Unknown User"
 
         return data
+    
+class LogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Log
+        fields = ['id', 'event_type', 'sender', 'receiver', 'success', 'timestamp']

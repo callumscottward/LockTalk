@@ -528,30 +528,51 @@ export default function Messages() {
                 onMouseEnter={() => setHoveredMessageId(msg.id)}
                 onMouseLeave={() => setHoveredMessageId(null)}
                 style={{
-                  alignSelf: msg.is_me ? "flex-end" : "flex-start",
-                  background: msg.is_me ? "#075E54" : "#fff",
-                  color: msg.is_me ? "#fff" : "#000",
-                  padding: "8px 12px",
-                  borderRadius: "8px",
-                  maxWidth: "70%",
                   display: "flex",
-                  flexDirection: 'row',
-                  alignItems: "center",
-                  gap: "5px",
-                  position: 'relative'
-                }}>
-                {!msg.is_me && <div style={{ fontWeight: "bold" }}>{msg.sender}</div>}
-                <div>{msg.text}</div>
-
-                {/* Delete Button - Only shows on hover for your own message */}
-                {hoveredMessageId === msg.id && msg.is_me && (
-                  <button
-                    onClick={() => handleDeleteMessage(msg.id)}
-                    style={{ background: "none", border: "none", color: "#ff4d4d", cursor: "pointer", fontSize: "14px", padding: "0 5px", fontWeight: "bold"}}
-                  >
-                    ✕
-                  </button>
+                  flexDirection: "column",
+                  alignSelf: msg.is_me ? "flex-end" : "flex-start",
+                  maxWidth: "70%",
+                }}
+              >
+                {/* Name ABOVE the bubble */}
+                {!msg.is_me && (
+                  <div style={{ fontWeight: "bold", fontSize: "12px", marginBottom: "3px" }}>
+                    {msg.sender}
+                  </div>
                 )}
+
+                {/* Message bubble */}
+                <div
+                  style={{
+                    background: msg.is_me ? "#075E54" : "#d0d0d0ff",
+                    color: msg.is_me ? "#fff" : "#000",
+                    padding: "8px 12px",
+                    borderRadius: "8px",
+                    position: "relative"
+                  }}
+                >
+                  <div>{msg.text}</div>
+
+                  {/* Delete Button */}
+                  {hoveredMessageId === msg.id && msg.is_me && (
+                    <button
+                      onClick={() => handleDeleteMessage(msg.id)}
+                      style={{
+                        position: "absolute",
+                        top: "5px",
+                        right: "5px",
+                        background: "none",
+                        border: "none",
+                        color: "#ff4d4d",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        fontWeight: "bold"
+                      }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
               </div>
             ))
           )}

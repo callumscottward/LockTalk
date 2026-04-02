@@ -352,7 +352,7 @@ export default function Messages() {
           
           if (typeof content === 'string') {
             try {
-              const validJsonString = content.replaceAll(/'/g, '"');
+              const validJsonString = content.replaceAll('\'', '"');
               content = JSON.parse(validJsonString);
             } catch (e) {
               console.error("Failed to parse content for msg", msg.id, e);

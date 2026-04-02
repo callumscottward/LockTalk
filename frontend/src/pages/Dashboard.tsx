@@ -41,10 +41,10 @@ function getCookie(name: string) {
 function MessageBubbleText({
   msg,
   decryptMessage,
-}: {
+}: Readonly<{
   msg: Message;
   decryptMessage: (m: Message["encrypted_content"]) => Promise<string>;
-}) {
+}>) {
   const [decrypted, setDecrypted] = useState("");
 
   useEffect(() => {
@@ -352,7 +352,7 @@ export default function Messages() {
           
           if (typeof content === 'string') {
             try {
-              const validJsonString = content.replace(/'/g, '"');
+              const validJsonString = content.replaceAll(/'/g, '"');
               content = JSON.parse(validJsonString);
             } catch (e) {
               console.error("Failed to parse content for msg", msg.id, e);

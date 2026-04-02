@@ -554,7 +554,6 @@ export default function Messages() {
                 >
                   <div>{msg.text}</div>
                   <div style={{fontSize: "10px", opacity:0.7}}>
-                    {/* {msg.timestamp && new Date(msg.timestamp).toLocaleTimeString()} */}
                       {new Date(msg.timestamp || "").toLocaleTimeString()}
                   </div>
 

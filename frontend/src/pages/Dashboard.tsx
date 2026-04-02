@@ -176,7 +176,8 @@ export default function Messages() {
             sender: data.sender_email,
             text: data.content,
             // the .trim().toLowerCase() ensures they are identical
-            is_me: data.sender_email.trim().toLowerCase() === currentUserEmail?.trim().toLowerCase()
+            is_me: data.sender_email.trim().toLowerCase() === currentUserEmail?.trim().toLowerCase(),
+            timestamp: data.timestamp || new Date().toISOString(),
           }
         ]);
 
@@ -552,6 +553,10 @@ export default function Messages() {
                   }}
                 >
                   <div>{msg.text}</div>
+                  <div style={{fontSize: "10px", opacity:0.7}}>
+                    {/* {msg.timestamp && new Date(msg.timestamp).toLocaleTimeString()} */}
+                      {new Date(msg.timestamp || "").toLocaleTimeString()}
+                  </div>
 
                   {/* Delete Button */}
                   {hoveredMessageId === msg.id && msg.is_me && (

@@ -22,6 +22,17 @@ def create_logs(conversation, user):
             success=True
         )
 
+def delete_old_messages():
+    from django.utils import timezone
+    from datetime import timedelta
+    from .models import Message
+
+    cutoff = timezone.now() - timedelta(days=90)
+
+    Message.objects.filter(
+        created_at__lt=cutoff
+    ).delete()
+
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.user = self.scope["user"]
@@ -85,6 +96,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     "sender_email": self.user.email,
                     "sender_name": f"{self.user.first_name} {self.user.last_name}",
                     "message_id": details.id,
+                    "timestamp": details.created_at.isoformat(),
                 }
             )
             
@@ -94,6 +106,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 lambda: Conversation.objects.filter(id=self.conversation_id)
                 .update(latestUpdate=timezone.now())
             )()
+
+            await database_sync_to_async(delete_old_messages)()
 
     async def chat_message(self, event):
         await self.send(text_data=json.dumps({

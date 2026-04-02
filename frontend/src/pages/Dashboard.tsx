@@ -12,7 +12,7 @@ interface Conversation {
 interface Message {
   id: number;
   sender: string;
-  text: string;
+  encrypted_content: { iv: Array<number>, data: Array<number> };
   is_me: boolean;
   timestamp?: string;
 }
@@ -36,6 +36,35 @@ function getCookie(name: string) {
     }
   }
   return cookieValue;
+}
+
+function MessageBubbleText({
+  msg,
+  decryptMessage,
+}: Readonly<{
+  msg: Message;
+  decryptMessage: (m: Message["encrypted_content"]) => Promise<string>;
+}>) {
+  const [decrypted, setDecrypted] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      const text = await decryptMessage(msg.encrypted_content);
+      if (!cancelled) setDecrypted(text);
+    };
+
+    run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [msg.encrypted_content]);
+
+  return (
+    <div>{decrypted}</div>
+  );
 }
 
 export default function Messages() {
@@ -166,7 +195,7 @@ export default function Messages() {
     const ws = new WebSocket(`ws://localhost:8000/ws/conversation/${activeConversationId}/`);
     socketRef.current = ws;
 
-    ws.onmessage = (e) => {
+    ws.onmessage = async (e) => {
       const data = JSON.parse(e.data);
       if (data.type === "chat_message") {
         setMessages(prev => [
@@ -174,7 +203,7 @@ export default function Messages() {
           {
             id: data.message_id,
             sender: data.sender_email,
-            text: data.content,
+            encrypted_content: data.content,
             // the .trim().toLowerCase() ensures they are identical
             is_me: data.sender_email.trim().toLowerCase() === currentUserEmail?.trim().toLowerCase()
           }
@@ -203,11 +232,59 @@ export default function Messages() {
     };
   }, [activeConversationId, currentUserEmail]);
 
+  // Get the key message encryption will use (hardcoded for now)
+  const getKey = async () => {
+    const enc = new TextEncoder();
+    return crypto.subtle.importKey(
+      "raw",
+      enc.encode("temporary_test_key_1234567891011"),
+      { name: "AES-GCM" },
+      false,
+      ["encrypt", "decrypt"]
+    );
+  };
+  
+  // Encrypt messages before sending them
+  const encryptMessage = async (message: string) => {
+    const key = await getKey();
+    const enc = new TextEncoder();
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+
+    const ciphertext = await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv },
+      key,
+      enc.encode(message)
+    );
+
+    return {
+      iv: Array.from(iv),
+      data: Array.from(new Uint8Array(ciphertext)),
+    };
+  };
+
+  // Decrypt received messages to be displayed in plaintext
+  const decryptMessage = async ( message: { iv: Array<number>, data: Array<number> } ) => {
+    const key = await getKey();
+    const decoder = new TextDecoder();
+
+    const { iv, data } = message;
+
+    const decrypted = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: new Uint8Array(iv) },
+      key,
+      new Uint8Array(data)
+    );
+
+    return decoder.decode(decrypted);
+  };
+  
   // Send message via WebSocket
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!messageInput.trim() || !socketRef.current) return;
 
-    socketRef.current.send(JSON.stringify({ message: messageInput }));
+    const encryptedMessage = await encryptMessage(messageInput);
+
+    socketRef.current.send(JSON.stringify({ message: encryptedMessage }));
     setMessageInput("");
   };
 
@@ -269,13 +346,28 @@ export default function Messages() {
 
         const dataApi = await res.json();
 
-        const mapped: Message[] = dataApi.map((msg: any) => ({
-          id: msg.id,
-          sender: msg.sender,
-          text: msg.content,
-          is_me: msg.sender.trim() === currentUserEmail.trim(),
-          timestamp: msg.created_at,
-        }));
+        const mapped: Message[] = dataApi.map((msg: any) => {
+          // Ensure message content is JSON and not string from API fetch
+          let content = msg.content
+          
+          if (typeof content === 'string') {
+            try {
+              const validJsonString = content.replaceAll('\'', '"');
+              content = JSON.parse(validJsonString);
+            } catch (e) {
+              console.error("Failed to parse content for msg", msg.id, e);
+              content = undefined;
+            }
+          }
+          
+          return {
+            id: msg.id,
+            sender: msg.sender,
+            encrypted_content: content,
+            is_me: msg.sender.trim() === currentUserEmail.trim(),
+            timestamp: msg.created_at,
+          };
+        });
 
         setMessages(mapped); // populate chat window
       } catch (err) {
@@ -551,7 +643,8 @@ export default function Messages() {
                     position: "relative"
                   }}
                 >
-                  <div>{msg.text}</div>
+                  {/* Function to decrypt and display text to avoid storing plaintext */}
+                  <MessageBubbleText msg={msg} decryptMessage={decryptMessage} />
 
                   {/* Delete Button */}
                   {hoveredMessageId === msg.id && msg.is_me && (

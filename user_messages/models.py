@@ -30,6 +30,8 @@ class Conversation(models.Model):
 
     latestUpdate = models.DateTimeField(default=timezone.now)
 
+    retention_days = models.IntegerField(null=True, blank=True)
+
 
 class Message(models.Model):
     class MessageType(models.TextChoices):

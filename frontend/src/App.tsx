@@ -7,6 +7,8 @@ import UserProfile from './pages/UserProfile';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Messages from './pages/Messages';
+import UserManagement from './pages/UserManagement';
+import Logs from './pages/Logs';
 import Signup from './pages/Signup';
 
 function App() {
@@ -29,6 +31,8 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/messages" element={<Messages />} />
         <Route path="/members" element={<Members />} />
+        <Route path="/userManagement" element={<UserManagement />} />
+        <Route path="/logs" element={<Logs />} />
         <Route path="/members/details/:id" element={<MemberDetails />} />
       </Routes>
     </div>

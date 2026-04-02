@@ -5,15 +5,21 @@ function Login() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
 
-  const handleSubmit = async (e: any) => {
+  function getCSRFToken() {
+    const match = document.cookie.match(/csrftoken=([\w-]+)/);
+    return match ? match[1] : "";
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const response = await fetch("http://localhost:8000/api/login/", {
-      method: "POST",
+      method: "POST", // unsafe method triggers CSRF check
       headers: {
         "Content-Type": "application/json",
+        "X-CSRFToken": getCSRFToken(), // must send CSRF token
       },
-      credentials: "include",
+      credentials: "include", // ensures session cookie is sent
       body: JSON.stringify({ email, password }),
     });
 

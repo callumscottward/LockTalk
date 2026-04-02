@@ -16,6 +16,12 @@ export default function Signup() {
   const [message, setMessage] = useState("");
   const [errors, setErrors] = useState<Record<string, string[]>>({});
 
+  function getCSRFToken() {
+    const match = document.cookie.match(/csrftoken=([\w-]+)/);
+    return match ? match[1] : "";
+  }
+
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -26,8 +32,9 @@ export default function Signup() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "X-CSRFToken": getCSRFToken(), // ⚠ important for session auth
       },
-      credentials: "include",
+      credentials: "include", // ensures the session cookie is set
       body: JSON.stringify({
         email,
         first_name: firstName,
@@ -39,21 +46,13 @@ export default function Signup() {
 
     const data: SignupResponse = await response.json();
 
-    if (response.ok) {
-      console.log("SUCCESS BLOCK RUNNING");
-
-      // Name saved to use in other pages, to see who sent it for example
-      localStorage.setItem("username", '${firstName} ${lastName}')
-
+    if (response.ok && data.success) {
+      localStorage.setItem("username", `${firstName} ${lastName}`);
       setMessage("Account created successfully!");
-      window.location.href = "/";
+      window.location.href = "/dashboard"; // redirect to dashboard
     } else {
-      if (data.errors) {
-        setErrors(data.errors);
-      }
-      if (data.message) {
-        setMessage(data.message);
-      }
+      if (data.errors) setErrors(data.errors);
+      if (data.message) setMessage(data.message);
     }
   };
 

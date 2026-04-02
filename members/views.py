@@ -1,117 +1,160 @@
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-import json
-
-from .models import Member
-from django.shortcuts import render, redirect
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import User
-from django.contrib.auth import authenticate, login, logout
-from django.contrib import messages
-from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.cache import never_cache
+from user_messages.models import Log
+from django.contrib.auth import authenticate, login, logout, get_user_model
+
 from .forms import CustomUserCreationForm
 
-#The views is where you first get your .html file reference but also do any data processing and analysis
+class member_detail_api(APIView):
+    permission_classes = [AllowAny]
 
-@csrf_exempt
-def members_api(request):
-    members = list(Member.objects.all().values())
-    return JsonResponse(members)
+    def get(self, request, id):
+        try:
+            member = User.objects.get(id=id)
+        except User.DoesNotExist:
+            return Response({"error": "Member not found"}, status=404)
+
+        return Response({
+            "id": member.id,
+            "firstName": member.first_name,
+            "lastName": member.last_name
+        })
 
 
-@csrf_exempt
-def member_detail_api(request, id):
-    member = Member.objects.get(id=id)
-    
-    data = {
-        "id": member.id,
-        "firstName": member.firstName,
-        "lastName": member.lastName,
-    }
+class login_api(APIView):
+    permission_classes = [AllowAny]
 
-    return JsonResponse(data)
-
-@csrf_exempt
-def login_api(request):
-    if request.method == "POST":
-        data = json.loads(request.body)
-        email = data.get("email")
-        password = data.get("password")
-
-        user = authenticate(request, username = email, password = password)
-
-        if user is not None:
-            login(request, user)
-            return JsonResponse({
-                "success": True,
-                "message": f"Welcome back, {user.first_name}!",
-                "user": {
-                    "email": user.email,
-                    "first_name": user.first_name,
-                }
-            })
-        else:
-            return JsonResponse({
-                "success": False,
-                "message": "Invalid email or password."
-            }, status=400)
-
-@csrf_exempt
-def logout_view(request):
-    logout(request)
-    return JsonResponse({"success": True})
-
-@csrf_exempt
-def register_api(request):
-    if request.method != "POST":
-        return JsonResponse({"message": "Invalid request method"}, status=405)
-
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({"message": "Invalid JSON"}, status=400)
-
-    form = CustomUserCreationForm(data)
-
-    if form.is_valid():
-        user = form.save()
-
-        email = form.cleaned_data["email"]
-        password = form.cleaned_data["password1"]
+    def post(self, request):
+        email = request.data.get("email")
+        password = request.data.get("password")
 
         user = authenticate(request, username=email, password=password)
 
-        if user is not None:
+        if user:
             login(request, user)
-
-            return JsonResponse({
+            Log.objects.create(
+                event_type='LOGIN',
+                sender=user.username,
+                receiver='SYSTEM',
+                success=True
+            )
+            return Response({
                 "success": True,
-                "message": "Account created successfully"
+                "message": "Login successful",
+                "user": {
+                    "email": user.email,
+                    "username": user.username
+                }
             })
+        else:
+            Log.objects.create(
+                event_type='LOGIN',
+                sender=email,
+                receiver='SYSTEM',
+                success=False
+            )
 
-        return JsonResponse({
+        return Response({
             "success": False,
-            "message": "Authentication failed after registration"
+            "message": "Invalid email or password"
         }, status=400)
+    
+class LogoutAPIView(APIView):
+    permission_classes = [IsAuthenticated]
 
-    return JsonResponse({
-        "success": False,
-        "errors": form.errors
-    }, status=400)
+    def post(self, request):
+        logout(request)
+        return Response({"message": "Logged out successfully"})
 
-@csrf_exempt
-def current_user_api(request):
-    if not request.user.is_authenticated:
-        return JsonResponse({
+class register_api(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+
+        form = CustomUserCreationForm(request.data)
+
+        if form.is_valid():
+            user = form.save()
+
+            email = form.cleaned_data["email"]
+            password = form.cleaned_data["password1"]
+
+# Log successful registration
+            Log.objects.create(
+                event_type='REGISTER',
+                sender='SYSTEM',       # system-created event
+                receiver=user.username, # the newly created user                    success=True
+            )
+
+            user = authenticate(request, username=email, password=password)
+
+            if user is not None:
+                login(request, user)
+
+                return Response({
+                    "success": True,
+                    "message": "Account created successfully"
+                })
+            else:
+                Log.objects.create(
+                    event_type='REGISTER',
+                    sender='SYSTEM',
+                    receiver=user.username,
+                    success=False
+                )
+
+            return Response({
+                "success": False,
+                "message": "Authentication failed after registration"
+            }, status=400)
+
+        return Response({
             "success": False,
-            "message": "User not authenticated"
-        }, status=401)
+            "errors": form.errors
+        }, status=400)
+    
+class current_user_api(APIView):
+    permission_classes = [IsAuthenticated]
 
-    user = request.user
+    def get(self, request):
+        user = request.user
 
-    return JsonResponse({
-        "id": user.id,
-        "email": user.email,
-        "username": user.username
-    })
+        return Response({
+            "id": user.id,
+            "email": user.email,
+            "username": user.username
+        })
+
+class UserListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        query = request.GET.get("search", "")
+
+        users = User.objects.exclude(id=request.user.id)
+
+        if query:
+            users = users.filter(username__icontains=query)
+
+        data = [
+            {
+                "id": user.id,
+                "username": user.username,
+                "name": f"{user.first_name} {user.last_name}"
+            }
+            for user in users
+        ]
+
+        return Response(data)
+    
+class UserSearchAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        query = request.GET.get("search", "")
+        users = User.objects.filter(username__icontains=query)[:10]
+        data = [{"id": u.id, "username": u.username} for u in users]
+        return Response(data)

@@ -1,0 +1,52 @@
+name: LockTalk Documentation
+on:
+  push:
+    branches: ["DocumentationBranch"]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Tools
+        working-directory: ./frontend
+        run: |
+          sudo apt-get update && sudo apt-get install -y doxygen
+          npm install
+
+      # Run TypeDoc, creating a folder (frontend)
+      - name: Build TypeDoc
+        working-directory: ./frontend
+        run: npx typedoc --out ../deploy/frontend
+
+      - name: Create Deploy
+        run: mkdir -p deploy/backend/
+
+      # Run Doxygen, creating a folder
+      - name: Build Doxygen
+        run: doxygen Doxyfile
+
+      # Looks for where the index.html code is and goes there for the landing page
+      - name: Prepare Landing Page
+        run: cp documentation-landing-page.html ./deploy/index.html
+
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './deploy'
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - name: Deploy
+        uses: actions/deploy-pages@v4

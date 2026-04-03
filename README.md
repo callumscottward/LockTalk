@@ -148,3 +148,28 @@ npm run dev
 When you are done for the moment and want to free up the system, run:
 
 docker-compose stop
+
+# Documentation Setup
+
+How to work with the documentation, with Doxygen for the backend, and TypeDoc for the frontend.
+
+## Doxygen Download
+
+Download Doxygen here: https://www.doxygen.nl/download.html
+
+## Updating / generating documentation files:
+
+To see and update documentation run:
+
+For backend: doxygen Doxyfile
+
+For frontend: cd frontend && npx typedoc
+
+For viewing use docs/backend/html/index.html and/or docs/frontend/index.html. In windows it is start docs/backend/html/index.html or start docs/frontend/index.html
+
+There is also a page leading to both by running:
+start docs/index.html
+
+## Note: Comment type
+
+For documentation to show up, the comments must be formatted a certain way. For Django use ## style, for typescript use /** */ style.

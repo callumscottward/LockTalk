@@ -6,11 +6,13 @@ Welcome to LockTalk, a project created by Brendan Farrell, Maddie Luth, Miah Mas
 
 # Release Notes
 
-## Milestone 2 Features
+## Milestone 3 Features
 
-- Account creation and login on React site
-- Direct messaging via websockets between 2+ users simultaneously
-- Conversation creation and management on Django admin site
+- Conversation creation and deletion in frontend
+- Deletion of sent messages
+- Message encryption using fixed-key AES
+- Automated visual documentation creation
+- SonarQube integration
 
 ---
 

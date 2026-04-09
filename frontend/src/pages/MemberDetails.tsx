@@ -13,7 +13,7 @@ export default function MemberDetails() {
 
   useEffect(() => {
     const fetchMember = async () => {
-      const response = await fetch(`http://localhost:8000/api/members/${id}`);
+      const response = await fetch(`/api/members/${id}`);
       const data = await response.json();
       setMember(data);
     };

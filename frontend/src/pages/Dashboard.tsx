@@ -97,7 +97,7 @@ export default function Messages() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/me/", {
+        const res = await fetch("/api/me/", {
           headers: authHeaders,
           credentials: "include"
         });
@@ -311,7 +311,7 @@ export default function Messages() {
     try {
       const csrfToken = getCookie("csrftoken");
 
-      const res = await fetch("http://localhost:8000/api/logout/", {
+      const res = await fetch("/api/logout/", {
         method: "POST",
         credentials: "include",
         headers: {
@@ -386,7 +386,7 @@ export default function Messages() {
       setUsers([]);
       return;
     }
-    fetch(`http://localhost:8000/api/users/?search=${encodeURIComponent(searchQuery)}`, {
+    fetch(`/api/users/?search=${encodeURIComponent(searchQuery)}`, {
       credentials: "include"
     })
       .then(res => res.json())

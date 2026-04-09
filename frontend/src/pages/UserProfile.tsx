@@ -15,7 +15,7 @@ export default function UserProfile() {
 
   // The current calls
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
-  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [, setCurrentUserRole] = useState<string | null>(null);
   const [currentUserUsername, setCurrentUserUsername] = useState<string | null>(null);
 
   const authHeaders = {
@@ -26,7 +26,7 @@ export default function UserProfile() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/me/", {
+        const res = await fetch("/api/me/", {
           headers: authHeaders,
           credentials: "include"
         });

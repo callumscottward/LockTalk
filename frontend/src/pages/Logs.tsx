@@ -17,7 +17,7 @@ export default function Logs() {
   useEffect(() => {
     async function fetchLogs() {
       try {
-        const response = await fetch("http://localhost:8000/api/logs/", {
+        const response = await fetch("/api/logs/", {
           credentials: "include", // include session cookies if needed
         });
         if (!response.ok) throw new Error("Failed to fetch logs");
@@ -35,11 +35,11 @@ export default function Logs() {
   }, []);
 
   // Filter logs based on searchTerm
-  const filteredLogs = logs.filter(log =>
-    log.sender.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.receiver.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.event_type.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // const filteredLogs = logs.filter(log =>
+  //   log.sender.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //   log.receiver.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //   log.event_type.toLowerCase().includes(searchTerm.toLowerCase())
+  // );
 
   if (loading) return <p>Loading logs...</p>;
 

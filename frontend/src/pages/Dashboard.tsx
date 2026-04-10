@@ -83,10 +83,15 @@ export default function Messages() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [hoveredMessageId, setHoveredMessageId] = useState<number | null>(null);
   const [hoveredConvId, setHoveredConvId] = useState<string | null>(null);
+  const [isSettingsDropdownOpen, setIsSettingsDropdownOpen] = useState(false);
+  const [activeModal, setActiveModal] = useState<"expiration" | "members" | null>(null);
+  const [expirationDays, setExpirationDays] = useState("default");
+  const settingsRef = useRef<HTMLDivElement>(null);
 
   const socketRef = useRef<WebSocket | null>(null);
   const conversationsSocketRef = useRef<WebSocket | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const activeChat = conversations.find(c => c.id === activeConversationId)
 
   const authHeaders = {
     "Content-Type": "application/json",
@@ -307,6 +312,22 @@ export default function Messages() {
     }));
   };
 
+  const handleRemoveMember = (username: string) => {
+    if (!window.confirm("Remove this member from the group?")) return;
+    // Logic goes here for removing a member
+  };
+
+  const handleAddMember = (username: string) => {
+    // Logic goes here for adding a member
+};
+
+  const handleUpdateExpiration = () => {
+    // Logic goes here for the expriation date
+    setIsSettingsDropdownOpen(false);
+  };
+
+
+
   const handleLogout = async () => {
     try {
       const csrfToken = getCookie("csrftoken");
@@ -399,6 +420,9 @@ export default function Messages() {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsMenuOpen(false);
       }
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+        setIsSettingsDropdownOpen(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -440,7 +464,7 @@ export default function Messages() {
         <h3 style={{ padding: "15px" }}>Chats</h3>
         <button
           onClick={() => setIsModalOpen(true)}
-          style={{ ...btnStyle, backgroundColor: "#ddd", margin: "10px" }}
+          style={{ ...btnStyle, backgroundColor: "#075E54", margin: "10px" }}
         >+</button>
         {loadingConversations ? (
           <p style={{ padding: "15px" }}>Loading...</p>
@@ -506,7 +530,7 @@ export default function Messages() {
                   style={{
                     background: "none",
                     border: "none",
-                    color: "#ff4d4d",
+                    color: "darkred",
                     cursor: "pointer",
                     fontSize: "14px",
                     fontWeight: "bold"
@@ -520,7 +544,7 @@ export default function Messages() {
         )}
       </div>
 
-      {/* Chat Window */}
+{/* Chat Window */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         <div
           style={{
@@ -543,12 +567,44 @@ export default function Messages() {
               gap: "4px"
             }}
           >
-            <strong>
-              {conversations.find(c => c.id === activeConversationId)?.name || "Select a chat"}
-            </strong>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <strong>
+                {activeChat?.name || "Select a chat"}
+              </strong>
+              
+              {activeConversationId && (
+                <div style={{ position: "relative" }} ref={settingsRef}>
+                  <button 
+                    onClick={() => setIsSettingsDropdownOpen(!isSettingsDropdownOpen)}
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: "16px" }}
+                  >
+                    ⚙️
+                  </button>
+                  {isSettingsDropdownOpen && (
+                    <div style={{                position: "absolute",
+                                top: "40px",
+                                right: "0",
+                                background: "white",
+                                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                                borderRadius: "8px",
+                                zIndex: 2000,
+                                width: "180px",
+                                display: "flex",
+                                flexDirection: "column",
+                                overflow: "hidden"}}>
+                      <button style={menuItemStyle} onClick={() => { setActiveModal("expiration"); setIsSettingsDropdownOpen(false); }}>Message Expiration</button>
+                      {activeChat?.is_group && (
+                        <button style={menuItemStyle} onClick={() => { setActiveModal("members"); setIsSettingsDropdownOpen(false); }}>Manage Members</button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* List participants */}
             <div style={{ fontSize: "14px", color: "#555" }}>
-              {conversations.find(c => c.id === activeConversationId)?.participants
+              {activeChat?.participants
                 ?.filter(p => p.username !== currentUserEmail)
                 .map((p, idx, arr) => (
                   <span key={p.id}>
@@ -598,11 +654,12 @@ export default function Messages() {
                 <button style={menuItemStyle} onClick={() => window.location.href = "/UserProfile"}>User Profile</button>
                 <button style={menuItemStyle} onClick={() => window.location.href = "/UserManagement"}>User Management</button>
                 <button style={menuItemStyle} onClick={() => window.location.href = "/Logs"}>Logs</button>
+                <button style={menuItemStyle} onClick={() => window.location.href = "/ChatDirectory"}>Chat Directory</button>
 
                 <hr style={{ margin: 0, border: "none", borderTop: "1px solid #eee" }} />
 
                 <button
-                  style={{ ...menuItemStyle, color: "red" }}
+                  style={{ ...menuItemStyle, color: "darkred" }}
                   onClick={handleLogout}>Log Out</button>
               </div>
             )}
@@ -694,6 +751,92 @@ export default function Messages() {
           </button>
         </div>
       </div>
+{/* Expiration Modal */}
+      {activeModal === "expiration" && (
+        <div style={{position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+  background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 4000}}>
+          <div style={{background: "white", padding: "20px", borderRadius: "8px", width: "300px"}}>
+            <h3>Message Expiration</h3>
+            <select value={expirationDays} onChange={(e) => setExpirationDays(e.target.value)} style={{width: "100%", padding: "8px"}}>
+              <option value="Default">Default (90 Days)</option>
+              <option value="1">1 Day</option>
+              <option value="7">7 Days</option>
+              <option value="30">30 Days</option>
+            </select>
+            <div style={{display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px"}}>
+              <button onClick={() => setActiveModal(null)} style={{padding: "8px", background: "#ddd", border: "none", cursor: "pointer"}}>Cancel</button>
+              <button onClick={() => setActiveModal(null)} style={{padding: "8px", background: "#075E54", color: "white", border: "none", cursor: "pointer", borderRadius: "4px"}}>Save Settings</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manage Members Modal */}
+      {activeModal === "members" && activeChat && (
+        <div style={{position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+          background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 4000}}>
+          <div style={{background: "white", padding: "20px", borderRadius: "8px", width: "300px"}}>
+            <h3>Manage Members</h3>
+            {/* --- ADD MEMBER SECTION --- */}
+            <div style={{ marginBottom: "20px", position: "relative" }}>
+              <label style={{ fontSize: "12px", fontWeight: "bold", color: "#666" }}>Add New Member</label>
+              <input
+                placeholder="Search by username..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ width: "100%", padding: "8px", marginTop: "5px", boxSizing: "border-box" }}
+              />
+              
+              {/* Dropdown for Search Results */}
+              {searchQuery && users.length > 0 && (
+                <div style={{
+                  position: "absolute", top: "100%", left: 0, right: 0,
+                  background: "white", border: "1px solid #ccc", borderRadius: "4px",
+                  maxHeight: "120px", overflowY: "auto", zIndex: 4001, boxShadow: "0 4px 8px rgba(0,0,0,0.1)"
+                }}>
+                  {users
+                    .filter(u => !activeChat.participants.some(p => p.username === u.username))
+                    .map((user) => (
+                      <div
+                        key={user.id}
+                        style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #eee" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "#f0f0f0")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "white")}
+                      >
+                        Add <strong>{user.username}</strong>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            <hr style={{ border: "none", borderTop: "1px solid #eee", margin: "15px 0" }} />
+
+            {/* --- CURRENT MEMBERS LIST --- */}
+            <label style={{ fontSize: "12px", fontWeight: "bold", color: "#666" }}>Current Members</label>
+            <div style={{ maxHeight: "150px", overflowY: "auto", marginTop: "5px" }}>
+              {activeChat.participants.map(p => (
+                <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #eee" }}>
+                  <span>{p.username} {p.username === currentUserEmail && "(You)"}</span>
+                  {p.username !== currentUserEmail && (
+                    <button
+                      onClick={() => {/* handleRemoveMember(p.id) */}}
+                      style={{ background: "none", border: "none", color: "darkred", cursor: "pointer", fontWeight: "bold" }}
+                    >✕</button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
+              <button onClick={() => { setActiveModal(null); setSearchQuery(""); }} style={{ padding: "8px 15px", background: "#ddd", border: "none", cursor: "pointer", borderRadius: "4px" }}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isModalOpen && (
         <div style={{
           position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
@@ -725,7 +868,7 @@ export default function Messages() {
                 ))}
               </div>
               <input
-                placeholder="Conversationname"
+                placeholder="Conversation name"
                 value={newConversationName}
                 onChange={(e) => setConversationName(e.target.value)}
                 style={{ width: "100%", padding: "8px", marginBottom: "5px" }}

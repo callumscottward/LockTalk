@@ -697,6 +697,8 @@ export default function Messages() {
                     background: msg.is_me ? "#075E54" : "#d0d0d0ff",
                     color: msg.is_me ? "#fff" : "#000",
                     padding: "8px 12px",
+                    paddingRight: hoveredMessageId === msg.id && msg.is_me ? "32px" : "12px",
+                    transition: "padding 0.15s ease",
                     borderRadius: "8px",
                     position: "relative"
                   }}
@@ -716,7 +718,7 @@ export default function Messages() {
                       style={{
                         position: "absolute",
                         top: "5px",
-                        right: "5px",
+                        right: "-5px",
                         background: "none",
                         border: "none",
                         color: "#ff4d4d",

@@ -198,7 +198,7 @@ export default function Messages() {
 
           const wasRemoved =
             previous.participants.some(p => p.id === userId) &&
-            !updated.participants.some(p => p.id === userId);
+            !updated.participants.some((p: { id: number | null; }) => p.id === userId);
 
           return wasRemoved
             ? prev.filter(c => c.id !== updated.id)
@@ -327,6 +327,15 @@ export default function Messages() {
 
   const handleDeleteConversation = (convId: string) => {
     if (!window.confirm("Delete this entire conversation?")) return;
+
+    console.log(convId)
+    console.log(activeConversationId)
+
+    if(convId == activeConversationId){
+      setActiveConversationId(null)
+      setMessages([])
+      setMessageInput("")
+    }
 
     conversationsSocketRef.current?.send(JSON.stringify({
       action: "delete_conversation",

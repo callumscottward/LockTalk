@@ -97,6 +97,7 @@ export default function Messages() {
 
   const currentUserIdRef = useRef<number | null>(null);
   const currentUserEmailRef = useRef<string | null>(null);
+  const currentConversationId = useRef<string | null>(null);
 
   const authHeaders = {
     "Content-Type": "application/json",
@@ -137,6 +138,7 @@ export default function Messages() {
         let sortedConversations = [...data].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
         setConversations(sortedConversations);
         setActiveConversationId(sortedConversations[0].id);
+        currentConversationId.current = sortedConversations[0].id;
       } catch (err) {
         //console.error(err);
         console.log("No Conversation Exists Yet")
@@ -170,10 +172,12 @@ export default function Messages() {
             const updated = [...prev];
             const existing = updated.splice(existingIndex, 1)[0];
             setActiveConversationId(existing.id);
+            currentConversationId.current = existing.id
             return [existing, ...updated];
           }
 
           setActiveConversationId(newConv.id);
+          currentConversationId.current = newConv.id
           return [newConv, ...prev];
         });
       }
@@ -189,6 +193,7 @@ export default function Messages() {
           if (prev === deletedId) {
             setMessages([]);
             setMessageInput("");
+            currentConversationId.current = null;
             return null;
           }
           return prev;
@@ -208,8 +213,9 @@ export default function Messages() {
             !updated.participants.some((p: { id: number | null; }) => p.id === userId);
 
           //Work around for right now
-          if(wasRemoved && activeChat === undefined){
+          if (wasRemoved && activeChat?.id === currentConversationId.current) {
             setActiveConversationId(null);
+            currentConversationId.current = null
             setMessages([])
           }
 
@@ -526,7 +532,10 @@ export default function Messages() {
               // Mouse hovering
               onMouseEnter={() => setHoveredConvId(conv.id)}
               onMouseLeave={() => setHoveredConvId(null)}
-              onClick={() => setActiveConversationId(conv.id)}
+              onClick={() => {
+                setActiveConversationId(conv.id);
+                currentConversationId.current = conv.id
+              }}
               style={{
                 padding: "12px",
                 cursor: "pointer",

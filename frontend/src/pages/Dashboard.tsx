@@ -213,7 +213,7 @@ export default function Messages() {
             !updated.participants.some((p: { id: number | null; }) => p.id === userId);
 
           //Work around for right now
-          if (wasRemoved && activeChat?.id === currentConversationId.current) {
+          if (wasRemoved && updated?.id === currentConversationId.current) {
             setActiveConversationId(null);
             currentConversationId.current = null
             setMessages([])

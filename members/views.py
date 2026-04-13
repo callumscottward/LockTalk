@@ -29,7 +29,7 @@ class member_detail_api(APIView):
 class login_api(APIView):
     permission_classes = [AllowAny]
 
-    @method_decorator(ratelimit(key='ip', rate='500/m', block=False))
+    @method_decorator(ratelimit(key='ip', rate='2/m', block=False))
     @method_decorator(ratelimit(key='post:email', rate='2/m', block=False))
     def post(self, request):
         if getattr(request, "limited", False):

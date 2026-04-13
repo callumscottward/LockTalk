@@ -750,7 +750,7 @@ export default function Messages() {
                     color: msg.is_me ? "#fff" : "#000",
                     padding: "8px 12px",
                     paddingRight: hoveredMessageId === msg.id && msg.is_me ? "32px" : "12px",
-                    paddingLeft: hoveredMessageId === msg.id && !msg.is_me && activeChat?.moderator === currentUserId ? "32px" : "12px",
+                    paddingLeft: hoveredMessageId === msg.id && !msg.is_me && activeChat?.moderator === currentUserId && activeChat?.is_group ? "32px" : "12px",
                     transition: "padding 0.15s ease",
                     borderRadius: "8px",
                     position: "relative"
@@ -766,7 +766,10 @@ export default function Messages() {
 
                   {/* Delete Button */}
                   {hoveredMessageId === msg.id &&
-                    (msg.is_me || activeChat?.moderator === currentUserId) && (
+                    (
+                      msg.is_me ||
+                      (activeChat?.is_group && activeChat?.moderator === currentUserId)
+                    ) && (
                       <button
                         onClick={() => handleDeleteMessage(msg.id)}
                         style={{

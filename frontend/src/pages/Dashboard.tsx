@@ -179,13 +179,20 @@ export default function Messages() {
       }
 
       if (data.type === "conversation_deleted") {
+        const deletedId = data.conversation_id;
+
         setConversations(prev =>
-          prev.filter(c => c.id !== data.conversation_id)
+          prev.filter(c => c.id !== deletedId)
         );
 
-        setActiveConversationId(prev =>
-          prev === data.conversation_id ? null : prev
-        );
+        setActiveConversationId(prev => {
+          if (prev === deletedId) {
+            setMessages([]);
+            setMessageInput("");
+            return null;
+          }
+          return prev;
+        });
       }
 
       if (data.type === "conversation_updated") {
@@ -330,12 +337,6 @@ export default function Messages() {
 
     console.log(convId)
     console.log(activeConversationId)
-
-    if(convId == activeConversationId){
-      setActiveConversationId(null)
-      setMessages([])
-      setMessageInput("")
-    }
 
     conversationsSocketRef.current?.send(JSON.stringify({
       action: "delete_conversation",

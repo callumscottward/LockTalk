@@ -207,6 +207,12 @@ export default function Messages() {
             previous.participants.some(p => p.id === userId) &&
             !updated.participants.some((p: { id: number | null; }) => p.id === userId);
 
+          //Work around for right now
+          if(wasRemoved && activeChat === undefined){
+            setActiveConversationId(null);
+            setMessages([])
+          }
+
           return wasRemoved
             ? prev.filter(c => c.id !== updated.id)
             : prev.map(c => c.id === updated.id ? updated : c);
@@ -891,10 +897,10 @@ export default function Messages() {
               {activeChat.participants.map(p => (
                 <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #eee", alignItems: "center" }}>
                   <span>{p.username} {p.username === currentUserEmail && "(You)"}</span>
-                    <button
-                      onClick={() => { handleRemoveMember(p.id) }}
-                      style={{ background: "none", border: "none", color: "darkred", cursor: "pointer", fontWeight: "bold", visibility: p.username === currentUserEmail ? "hidden" : "visible" }}
-                    >✕</button>
+                  <button
+                    onClick={() => { handleRemoveMember(p.id) }}
+                    style={{ background: "none", border: "none", color: "darkred", cursor: "pointer", fontWeight: "bold", visibility: p.username === currentUserEmail ? "hidden" : "visible" }}
+                  >✕</button>
                 </div>
               ))}
             </div>

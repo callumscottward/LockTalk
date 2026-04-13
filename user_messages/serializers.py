@@ -18,7 +18,7 @@ class ConversationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Conversation
-        fields = ["id", "name", "is_group", "participants", "last_msg", "time"]
+        fields = ["id", "name", "is_group", "participants", "moderator", "last_msg", "time"]
 
     """def get_name(self, obj):
         if obj.is_group:

@@ -118,6 +118,53 @@ class ConversationCreateView(APIView):
         serializer = ConversationSerializer(conversation)
         return Response(serializer.data, status=201)
     
+class AddMemberView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, conversation_id):
+        conversation = get_object_or_404(Conversation, id=conversation_id)
+
+        username = request.data.get("username")
+        if not username:
+            return Response({"error": "username required"}, status=400)
+
+        user = get_object_or_404(User, username=username)
+
+        if conversation.participants.filter(id=user.id).exists():
+            return Response({"message": "already a member"}, status=200)
+
+        conversation.participants.add(user)
+        conversation.refresh_from_db()
+
+        return Response(
+            ConversationSerializer(conversation, context={"request": request}).data,
+            status=200
+        )
+
+class RemoveMemberView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, conversation_id):
+        conversation = get_object_or_404(Conversation, id=conversation_id)
+
+        user_id = request.data.get("userId")
+        if not user_id:
+            return Response({"error": "userId required"}, status=400)
+
+        user = get_object_or_404(User, id=user_id)
+
+        # only remove if they exist
+        if not conversation.participants.filter(id=user.id).exists():
+            return Response({"error": "User not in conversation"}, status=400)
+
+        conversation.participants.remove(user)
+        conversation.refresh_from_db()
+
+        return Response(
+            ConversationSerializer(conversation, context={"request": request}).data,
+            status=200
+        )
+    
 class LogListView(APIView):
     permission_classes = [IsAuthenticated]
 

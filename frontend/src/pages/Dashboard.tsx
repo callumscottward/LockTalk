@@ -5,6 +5,7 @@ interface Conversation {
   name: string;
   is_group: boolean;
   participants: User[];
+  moderator?: number | null;
   last_msg?: string;
   time: string;
 }
@@ -74,6 +75,7 @@ export default function Messages() {
   const [messageInput, setMessageInput] = useState("");
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const [currentUserId, setcurrentUserId] = useState<number | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -93,6 +95,9 @@ export default function Messages() {
   const menuRef = useRef<HTMLDivElement>(null);
   const activeChat = conversations.find(c => c.id === activeConversationId)
 
+  const currentUserIdRef = useRef<number | null>(null);
+  const currentUserEmailRef = useRef<string | null>(null);
+
   const authHeaders = {
     "Content-Type": "application/json",
   };
@@ -108,6 +113,10 @@ export default function Messages() {
         });
         const data = await res.json();
         setCurrentUserEmail(data.username);
+        setcurrentUserId(data.id)
+
+        currentUserEmailRef.current = data.username;
+        currentUserIdRef.current = data.id;
       } catch (err) {
         console.error(err);
       }
@@ -138,15 +147,13 @@ export default function Messages() {
     fetchConversations();
   }, []);
 
-  // Web Socket Effect that is used when adding a new conversation
+  // Web Socket Effect that is used when adding a dealing with conversation 
   useEffect(() => {
     const ws = new WebSocket("ws://localhost:8000/ws/conversations/");
     conversationsSocketRef.current = ws;
 
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data);
-
-      console.log(data)
 
       if (data.type === "new_conversation") {
         setConversations(prev => {
@@ -156,19 +163,16 @@ export default function Messages() {
             if (conv.participants.length !== newConv.participants.length) return false;
 
             const set = new Set(conv.participants.map(p => p.username));
-            return newConv.participants.every((p: { username: string; }) => set.has(p.username));
+            return newConv.participants.every((p: { username: string }) => set.has(p.username));
           });
 
-          // CASE 1: Conversation already exists → move to top
           if (existingIndex !== -1) {
             const updated = [...prev];
             const existing = updated.splice(existingIndex, 1)[0];
-
             setActiveConversationId(existing.id);
             return [existing, ...updated];
           }
 
-          // CASE 2: New conversation → add to top
           setActiveConversationId(newConv.id);
           return [newConv, ...prev];
         });
@@ -182,6 +186,24 @@ export default function Messages() {
         setActiveConversationId(prev =>
           prev === data.conversation_id ? null : prev
         );
+      }
+
+      if (data.type === "conversation_updated") {
+        setConversations(prev => {
+          const updated = data.conversation;
+          const userId = currentUserIdRef.current;
+
+          const previous = prev.find(c => c.id === updated.id);
+          if (!previous) return [...prev, updated];
+
+          const wasRemoved =
+            previous.participants.some(p => p.id === userId) &&
+            !updated.participants.some(p => p.id === userId);
+
+          return wasRemoved
+            ? prev.filter(c => c.id !== updated.id)
+            : prev.map(c => c.id === updated.id ? updated : c);
+        });
       }
     };
 
@@ -249,7 +271,7 @@ export default function Messages() {
       ["encrypt", "decrypt"]
     );
   };
-  
+
   // Encrypt messages before sending them
   const encryptMessage = async (message: string) => {
     const key = await getKey();
@@ -269,7 +291,7 @@ export default function Messages() {
   };
 
   // Decrypt received messages to be displayed in plaintext
-  const decryptMessage = async ( message: { iv: Array<number>, data: Array<number> } ) => {
+  const decryptMessage = async (message: { iv: Array<number>, data: Array<number> }) => {
     const key = await getKey();
     const decoder = new TextDecoder();
 
@@ -283,7 +305,7 @@ export default function Messages() {
 
     return decoder.decode(decrypted);
   };
-  
+
   // Send message via WebSocket
   const handleSendMessage = async () => {
     if (!messageInput.trim() || !socketRef.current) return;
@@ -312,14 +334,27 @@ export default function Messages() {
     }));
   };
 
-  const handleRemoveMember = (username: string) => {
+  const handleRemoveMember = (userId: number) => {
+    if (!activeChat || !conversationsSocketRef.current) return;
+
     if (!window.confirm("Remove this member from the group?")) return;
-    // Logic goes here for removing a member
+
+    conversationsSocketRef.current.send(JSON.stringify({
+      action: "remove_member",
+      conversation_id: activeChat.id,
+      userId
+    }));
   };
 
   const handleAddMember = (username: string) => {
-    // Logic goes here for adding a member
-};
+    if (!activeChat || !conversationsSocketRef.current) return;
+
+    conversationsSocketRef.current.send(JSON.stringify({
+      action: "add_member",
+      conversation_id: activeChat.id,
+      username
+    }));
+  };
 
   const handleUpdateExpiration = () => {
     // Logic goes here for the expriation date
@@ -371,7 +406,7 @@ export default function Messages() {
         const mapped: Message[] = dataApi.map((msg: any) => {
           // Ensure message content is JSON and not string from API fetch
           let content = msg.content
-          
+
           if (typeof content === 'string') {
             try {
               const validJsonString = content.replaceAll('\'', '"');
@@ -381,7 +416,7 @@ export default function Messages() {
               content = undefined;
             }
           }
-          
+
           return {
             id: msg.id,
             sender: msg.sender,
@@ -521,30 +556,31 @@ export default function Messages() {
               </div>
 
               {/* RIGHT SIDE (delete button) */}
-              {hoveredConvId === conv.id && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation(); // Prevents clicking the chat when deleting it
-                    handleDeleteConversation(conv.id);
-                  }}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "darkred",
-                    cursor: "pointer",
-                    fontSize: "14px",
-                    fontWeight: "bold"
-                  }}
-                >
-                  ✕
-                </button>
-              )}
+              {hoveredConvId === conv.id &&
+                (!conv.is_group || conv.moderator === currentUserId) && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteConversation(conv.id);
+                    }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "darkred",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      fontWeight: "bold"
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
             </div>
           ))
         )}
       </div>
 
-{/* Chat Window */}
+      {/* Chat Window */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         <div
           style={{
@@ -571,31 +607,32 @@ export default function Messages() {
               <strong>
                 {activeChat?.name || "Select a chat"}
               </strong>
-              
-              {activeConversationId && (
+
+              {activeConversationId && activeChat?.moderator === currentUserId && activeChat?.is_group && (
                 <div style={{ position: "relative" }} ref={settingsRef}>
-                  <button 
+                  <button
                     onClick={() => setIsSettingsDropdownOpen(!isSettingsDropdownOpen)}
                     style={{ background: "none", border: "none", cursor: "pointer", fontSize: "16px" }}
                   >
                     ⚙️
                   </button>
                   {isSettingsDropdownOpen && (
-                    <div style={{                position: "absolute",
-                                top: "40px",
-                                right: "0",
-                                background: "white",
-                                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                                borderRadius: "8px",
-                                zIndex: 2000,
-                                width: "180px",
-                                display: "flex",
-                                flexDirection: "column",
-                                overflow: "hidden"}}>
+                    <div style={{
+                      position: "absolute",
+                      top: "40px",
+                      right: "0",
+                      background: "white",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                      borderRadius: "8px",
+                      zIndex: 2000,
+                      width: "180px",
+                      display: "flex",
+                      flexDirection: "column",
+                      overflow: "hidden"
+                    }}>
+
                       <button style={menuItemStyle} onClick={() => { setActiveModal("expiration"); setIsSettingsDropdownOpen(false); }}>Message Expiration</button>
-                      {activeChat?.is_group && (
-                        <button style={menuItemStyle} onClick={() => { setActiveModal("members"); setIsSettingsDropdownOpen(false); }}>Manage Members</button>
-                      )}
+                      <button style={menuItemStyle} onClick={() => { setActiveModal("members"); setIsSettingsDropdownOpen(false); }}>Manage Members</button>
                     </div>
                   )}
                 </div>
@@ -604,14 +641,19 @@ export default function Messages() {
 
             {/* List participants */}
             <div style={{ fontSize: "14px", color: "#555" }}>
-              {activeChat?.participants
-                ?.filter(p => p.username !== currentUserEmail)
-                .map((p, idx, arr) => (
-                  <span key={p.id}>
-                    {p.username}{idx < arr.length - 1 ? ", " : ""}
+              {activeChat?.participants?.map((p, idx, arr) => {
+                const isModerator = activeChat?.moderator === p.id;
+
+                return (
+                  <span
+                    key={p.id}
+                    style={{ fontWeight: isModerator && activeChat.is_group ? "bold" : "normal" }}
+                  >
+                    {p.username}
+                    {idx < arr.length - 1 ? ", " : ""}
                   </span>
-                ))
-              }
+                );
+              })}
             </div>
           </div>
 
@@ -698,6 +740,7 @@ export default function Messages() {
                     color: msg.is_me ? "#fff" : "#000",
                     padding: "8px 12px",
                     paddingRight: hoveredMessageId === msg.id && msg.is_me ? "32px" : "12px",
+                    paddingLeft: hoveredMessageId === msg.id && !msg.is_me && activeChat?.moderator === currentUserId ? "32px" : "12px",
                     transition: "padding 0.15s ease",
                     borderRadius: "8px",
                     position: "relative"
@@ -706,30 +749,32 @@ export default function Messages() {
 
                   {/* Function to decrypt and display text to avoid storing plaintext */}
                   <MessageBubbleText msg={msg} decryptMessage={decryptMessage} />
-        
-                  <div style={{fontSize: "10px", opacity:0.7}}>
-                      {new Date(msg.timestamp || "").toLocaleTimeString()}
+
+                  <div style={{ fontSize: "10px", opacity: 0.7 }}>
+                    {new Date(msg.timestamp || "").toLocaleTimeString()}
                   </div>
 
                   {/* Delete Button */}
-                  {hoveredMessageId === msg.id && msg.is_me && (
-                    <button
-                      onClick={() => handleDeleteMessage(msg.id)}
-                      style={{
-                        position: "absolute",
-                        top: "5px",
-                        right: "-5px",
-                        background: "none",
-                        border: "none",
-                        color: "#ff4d4d",
-                        cursor: "pointer",
-                        fontSize: "14px",
-                        fontWeight: "bold"
-                      }}
-                    >
-                      ✕
-                    </button>
-                  )}
+                  {hoveredMessageId === msg.id &&
+                    (msg.is_me || activeChat?.moderator === currentUserId) && (
+                      <button
+                        onClick={() => handleDeleteMessage(msg.id)}
+                        style={{
+                          position: "absolute",
+                          top: "5px",
+                          right: msg.is_me ? "-5px" : "auto",
+                          left: !msg.is_me ? "-5px" : "auto",
+                          background: "none",
+                          border: "none",
+                          color: "#ff4d4d",
+                          cursor: "pointer",
+                          fontSize: "14px",
+                          fontWeight: "bold"
+                        }}
+                      >
+                        ✕
+                      </button>
+                    )}
                 </div>
               </div>
             ))
@@ -753,21 +798,23 @@ export default function Messages() {
           </button>
         </div>
       </div>
-{/* Expiration Modal */}
+      {/* Expiration Modal */}
       {activeModal === "expiration" && (
-        <div style={{position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
-  background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 4000}}>
-          <div style={{background: "white", padding: "20px", borderRadius: "8px", width: "300px"}}>
+        <div style={{
+          position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+          background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 4000
+        }}>
+          <div style={{ background: "white", padding: "20px", borderRadius: "8px", width: "300px" }}>
             <h3>Message Expiration</h3>
-            <select value={expirationDays} onChange={(e) => setExpirationDays(e.target.value)} style={{width: "100%", padding: "8px"}}>
+            <select value={expirationDays} onChange={(e) => setExpirationDays(e.target.value)} style={{ width: "100%", padding: "8px" }}>
               <option value="Default">Default (90 Days)</option>
               <option value="1">1 Day</option>
               <option value="7">7 Days</option>
               <option value="30">30 Days</option>
             </select>
-            <div style={{display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px"}}>
-              <button onClick={() => setActiveModal(null)} style={{padding: "8px", background: "#ddd", border: "none", cursor: "pointer"}}>Cancel</button>
-              <button onClick={() => setActiveModal(null)} style={{padding: "8px", background: "#075E54", color: "white", border: "none", cursor: "pointer", borderRadius: "4px"}}>Save Settings</button>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
+              <button onClick={() => setActiveModal(null)} style={{ padding: "8px", background: "#ddd", border: "none", cursor: "pointer" }}>Cancel</button>
+              <button onClick={() => setActiveModal(null)} style={{ padding: "8px", background: "#075E54", color: "white", border: "none", cursor: "pointer", borderRadius: "4px" }}>Save Settings</button>
             </div>
           </div>
         </div>
@@ -775,9 +822,11 @@ export default function Messages() {
 
       {/* Manage Members Modal */}
       {activeModal === "members" && activeChat && (
-        <div style={{position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
-          background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 4000}}>
-          <div style={{background: "white", padding: "20px", borderRadius: "8px", width: "300px"}}>
+        <div style={{
+          position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+          background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 4000
+        }}>
+          <div style={{ background: "white", padding: "20px", borderRadius: "8px", width: "300px" }}>
             <h3>Manage Members</h3>
             {/* --- ADD MEMBER SECTION --- */}
             <div style={{ marginBottom: "20px", position: "relative" }}>
@@ -788,7 +837,7 @@ export default function Messages() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{ width: "100%", padding: "8px", marginTop: "5px", boxSizing: "border-box" }}
               />
-              
+
               {/* Dropdown for Search Results */}
               {searchQuery && users.length > 0 && (
                 <div style={{
@@ -805,7 +854,16 @@ export default function Messages() {
                         onMouseEnter={(e) => (e.currentTarget.style.background = "#f0f0f0")}
                         onMouseLeave={(e) => (e.currentTarget.style.background = "white")}
                       >
-                        Add <strong>{user.username}</strong>
+                        <div
+                          key={user.id}
+                          onClick={() => {
+                            handleAddMember(user.username);
+                            setSearchQuery("");
+                          }}
+                          style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #eee" }}
+                        >
+                          {user.username}
+                        </div>
                       </div>
                     ))}
                 </div>
@@ -822,7 +880,7 @@ export default function Messages() {
                   <span>{p.username} {p.username === currentUserEmail && "(You)"}</span>
                   {p.username !== currentUserEmail && (
                     <button
-                      onClick={() => {/* handleRemoveMember(p.id) */}}
+                      onClick={() => { handleRemoveMember(p.id) }}
                       style={{ background: "none", border: "none", color: "darkred", cursor: "pointer", fontWeight: "bold" }}
                     >✕</button>
                   )}
@@ -922,7 +980,11 @@ export default function Messages() {
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
-              <button onClick={() => setIsModalOpen(false)} style={{ padding: "8px", color: "#000000", background: "#ddd" }}>Cancel</button>
+              <button onClick={() => {
+                setIsModalOpen(false);
+                setSelectedUsers([]);
+                setConversationName("");
+              }} style={{ padding: "8px", color: "#000000", background: "#ddd" }}>Cancel</button>
               <button onClick={handleCreateChat} style={{ padding: "8px", background: "#075E54", color: "white", borderRadius: "4px" }}>Create</button>
             </div>
           </div>

@@ -889,14 +889,12 @@ export default function Messages() {
             <label style={{ fontSize: "12px", fontWeight: "bold", color: "#666" }}>Current Members</label>
             <div style={{ maxHeight: "150px", overflowY: "auto", marginTop: "5px" }}>
               {activeChat.participants.map(p => (
-                <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #eee" }}>
+                <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #eee", alignItems: "center" }}>
                   <span>{p.username} {p.username === currentUserEmail && "(You)"}</span>
-                  {p.username !== currentUserEmail && (
                     <button
                       onClick={() => { handleRemoveMember(p.id) }}
-                      style={{ background: "none", border: "none", color: "darkred", cursor: "pointer", fontWeight: "bold" }}
+                      style={{ background: "none", border: "none", color: "darkred", cursor: "pointer", fontWeight: "bold", visibility: p.username === currentUserEmail ? "hidden" : "visible" }}
                     >✕</button>
-                  )}
                 </div>
               ))}
             </div>

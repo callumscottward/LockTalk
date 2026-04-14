@@ -67,6 +67,12 @@ class LogoutAPIView(APIView):
 
     def post(self, request):
         logout(request)
+        Log.objects.create(
+                event_type='LOGOUT',
+                sender=self.username,
+                receiver='SYSTEM',
+                success=True
+            )
         return Response({"message": "Logged out successfully"})
 
 class register_api(APIView):

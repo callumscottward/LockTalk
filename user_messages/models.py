@@ -65,6 +65,9 @@ class Log(models.Model):
         ('SMS', 'SMS'),
         ('LOGIN', 'Login'),
         ('REGISTER', 'Register')
+        ('DELETE_SMS', 'DELETE_SMS'),
+        ('LOGOUT', 'LOGOUT'),
+        ('DELETE_CONVO', 'DELETE_CONVO')
     ]
 
     event_type = models.CharField(max_length=50, choices=EVENT_CHOICES)

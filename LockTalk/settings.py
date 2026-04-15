@@ -10,6 +10,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 import os
 
+import redis
+
 from corsheaders.defaults import default_headers
 
 load_dotenv()
@@ -99,7 +101,17 @@ WSGI_APPLICATION = 'LockTalk.wsgi.application'
 # For Channels and Daphne
 ASGI_APPLICATION = 'LockTalk.asgi.application'
 
-USE_REDIS = True # Set to True when Docker is running
+#USE_REDIS = True # Set to True when Docker is running
+
+def is_redis_running():
+    try:
+        client = redis.Redis(host="127.0.0.1", port=6379)
+        client.ping()
+        return True
+    except redis.exceptions.ConnectionError:
+        return False
+    
+USE_REDIS = is_redis_running()
 
 # Used by default when redis is working
 if USE_REDIS:

@@ -378,10 +378,10 @@ export default function Messages() {
     }));
   };
 
-  const handleUpdateExpiration = () => {
-    // Logic goes here for the expriation date
-    setIsSettingsDropdownOpen(false);
-  };
+  // const handleUpdateExpiration = () => {
+  //   // Logic goes here for the expriation date
+  //   setIsSettingsDropdownOpen(false);
+  // };
 
 
 

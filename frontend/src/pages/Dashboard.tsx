@@ -634,31 +634,31 @@ export default function Messages() {
             <p>No messages yet!</p>
           ) : (
             messages.map((msg, index) => {
-    const prevMsg = messages[index - 1];
+              const prevMsg = messages[index - 1];
 
-    const currentDate = new Date(msg.timestamp || "").toDateString();
-    const prevDate = prevMsg
-      ? new Date(prevMsg.timestamp || "").toDateString()
-      : null;
+              const currentDate = new Date(msg.timestamp || "").toDateString();
+              const prevDate = prevMsg
+                ? new Date(prevMsg.timestamp || "").toDateString()
+                : null;
 
-    const showDateDivider = currentDate !== prevDate;
+              const showDateDivider = currentDate !== prevDate;
 
-    return (
-      <>
-        {/* DATE DIVIDER */}
-        {showDateDivider && (
-          <div
-            style={{
-              textAlign: "center",
-              margin: "10px 0",
-              color: "#888",
-              fontSize: "12px",
-              width: "100%" // ensures it's centered across chat
-            }}
-          >
-            {new Date(msg.timestamp || "").toLocaleDateString()}
-          </div>
-        )}
+        return (
+            <>
+              {/* DATE DIVIDER */}
+              {showDateDivider && (
+              <div
+                style={{
+                  textAlign: "center",
+                  margin: "10px 0",
+                  color: "#888",
+                  fontSize: "12px",
+                  width: "100%" // ensures it's centered across chat
+                }}
+                  >
+                {new Date(msg.timestamp || "").toLocaleDateString()}
+              </div>
+                )}
               <div
                 key={msg.id}
                 // Logic for hovering

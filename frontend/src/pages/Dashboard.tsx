@@ -518,7 +518,7 @@ export default function Messages() {
     }}>
       {/* Sidebar */}
       <div style={{ width: "250px", borderRight: "1px solid #ddd", background: "#f0f0f0", display: "flex", flexDirection: "column", overflowY: "auto" }}>
-        <h3 style={{ padding: "15px" }}>Chats</h3>
+        <h3 style={{ padding: "5px" }}>Chats</h3>
         <button
           onClick={() => setIsModalOpen(true)}
           style={{ ...btnStyle, backgroundColor: "#075E54", margin: "10px" }}

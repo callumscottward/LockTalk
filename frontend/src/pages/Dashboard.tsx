@@ -875,6 +875,7 @@ export default function Messages() {
                 }}>
                   {users
                     .filter(u => !activeChat.participants.some(p => p.username === u.username))
+                    .filter(u => u.id !== currentUserId)
                     .map((user) => (
                       <div
                         key={user.id}
@@ -935,7 +936,7 @@ export default function Messages() {
             width: "300px", boxShadow: "0 2px 10px rgba(0,0,0,0.1)"
           }}>
             <h3>New Chat</h3>
-            <div style={{ position: "relative", width: "90%" }}>
+            <div style={{ display: "flex", flexWrap: "wrap" }}>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "5px", marginBottom: "10px" }}>
                 {selectedUsers.map((username) => (
                   <div
@@ -983,23 +984,25 @@ export default function Messages() {
                     zIndex: 1001,
                   }}
                 >
-                  {users.map((user) => (
-                    <div
-                      key={user.id}
-                      onClick={() => {
-                        toggleUser(user.username);
-                        setSearchQuery(""); // clear after select
-                      }}
-                      style={{
-                        padding: "8px",
-                        cursor: "pointer",
-                        background: selectedUsers.includes(user.username)
-                          ? "#ddd"
-                          : "white",
-                      }}
-                    >
-                      {user.username}
-                    </div>
+                  {users
+                    .filter(u => u.id !== currentUserId)
+                    .map((user) => (
+                      <div
+                        key={user.id}
+                        onClick={() => {
+                          toggleUser(user.username);
+                          setSearchQuery(""); // clear after select
+                        }}
+                        style={{
+                          padding: "8px",
+                          cursor: "pointer",
+                          background: selectedUsers.includes(user.username)
+                            ? "#ddd"
+                            : "white",
+                        }}
+                      >
+                        {user.username}
+                      </div>
                   ))}
                 </div>
               )}
@@ -1010,7 +1013,7 @@ export default function Messages() {
                 setIsModalOpen(false);
                 setSelectedUsers([]);
                 setConversationName("");
-              }} style={{ padding: "8px", color: "#000000", background: "#ddd" }}>Cancel</button>
+              }} style={{ padding: "8px", color: "#000000", background: "#ddd", borderRadius: "4px" }}>Cancel</button>
               <button onClick={handleCreateChat} style={{ padding: "8px", background: "#075E54", color: "white", borderRadius: "4px" }}>Create</button>
             </div>
           </div>

@@ -10,6 +10,7 @@ import Messages from './pages/Messages';
 import UserManagement from './pages/UserManagement';
 import Logs from './pages/Logs';
 import Signup from './pages/Signup';
+import ChatDirectory from './pages/ChatDirectory';
 
 function App() {
   // Below is what a sample API call might look like to Django once backend and frontend are more linked
@@ -33,6 +34,7 @@ function App() {
         <Route path="/members" element={<Members />} />
         <Route path="/userManagement" element={<UserManagement />} />
         <Route path="/logs" element={<Logs />} />
+        <Route path="/chatDirectory" element={<ChatDirectory />} />
         <Route path="/members/details/:id" element={<MemberDetails />} />
       </Routes>
     </div>

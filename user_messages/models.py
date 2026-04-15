@@ -64,7 +64,7 @@ class Log(models.Model):
     EVENT_CHOICES = [
         ('SMS', 'SMS'),
         ('LOGIN', 'Login'),
-        ('REGISTER', 'Register')
+        ('REGISTER', 'Register'),
         ('DELETE_SMS', 'DELETE_SMS'),
         ('LOGOUT', 'LOGOUT'),
         ('DELETE_CONVO', 'DELETE_CONVO')

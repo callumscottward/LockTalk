@@ -264,8 +264,6 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
                 Conversation.objects.get
             )(id=conv_id)
 
-            create_del_convo_logs(user);
-
             # For Later when we restrict this to moderator only
             #if user != conversation.moderator:
             #    return
@@ -277,6 +275,8 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
 
             # Delete conversation (messages auto-delete via CASCADE)
             await database_sync_to_async(conversation.delete)()
+            
+            await create_del_convo_logs(user);
 
             await self.channel_layer.group_send(
                 "conversations",

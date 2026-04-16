@@ -753,7 +753,7 @@ export default function Messages() {
               >
                 {/* Name ABOVE the bubble */}
                 {!msg.is_me && (
-                  <div style={{ fontWeight: "bold", fontSize: "12px", marginBottom: "3px" }}>
+                  <div style={{ fontWeight: "bold", fontSize: "12px", marginBottom: "3px", textAlign: "left" }}>
                     {msg.sender}
                   </div>
                 )}
@@ -768,7 +768,9 @@ export default function Messages() {
                     paddingLeft: hoveredMessageId === msg.id && !msg.is_me && activeChat?.moderator === currentUserId && activeChat?.is_group ? "32px" : "12px",
                     transition: "padding 0.15s ease",
                     borderRadius: "8px",
-                    position: "relative"
+                    position: "relative",
+                    display: "inline-block",
+                    width: "fit-content"
                   }}
                 >
 

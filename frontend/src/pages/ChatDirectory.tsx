@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import DataTable from '../components/DataTable';
+import DataTable, { filterStyle, btnStyle, deleteButtonStyle, bodyStyle } from '../components/DataTable';
 
 export default function ChatDirectory() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -95,71 +95,24 @@ export default function ChatDirectory() {
       </div>
 
       {/* --- Table Section --- */}
-      <div style={{ 
-        flex: 1, 
-        backgroundColor: "white", 
-        borderRadius: "8px", 
-        border: "1px solid #ddd", 
-        overflow: "hidden", // Important for contained scrolling
-        display: "flex",
-        flexDirection: "column"
-      }}>
-        <DataTable headers={["Chat Name", "Participants", "Date Created", "Last Date Used", "Actions"]}>
-          {filteredUsers.map(user => (
-            <tr key={user.id} style={{ borderBottom: "1px solid #eee" }}>
-              <td style={bodyStyle}>{user.chatName}</td>
-              <td style={bodyStyle}>{user.participants}</td>
-              <td style={bodyStyle}>{user.dateCreated}</td>
-              <td style={bodyStyle}>{user.lastDateUsed}</td>
-              <td style={{ ...bodyStyle, textAlign: "center" }}>
-                <button 
-                  onClick={() => handleDelete(user.id)}
-                  style={deleteButtonStyle}
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
-        </DataTable>
-      </div>
+      <DataTable headers={["Chat Name", "Participants", "Date Created", "Last Date Used", "Actions"]}>
+        {filteredUsers.map(user => (
+          <tr key={user.id} style={{ borderBottom: "1px solid #eee" }}>
+            <td style={bodyStyle}>{user.chatName}</td>
+            <td style={bodyStyle}>{user.participants}</td>
+            <td style={bodyStyle}>{user.dateCreated}</td>
+            <td style={bodyStyle}>{user.lastDateUsed}</td>
+            <td style={{ ...bodyStyle, textAlign: "center" }}>
+              <button 
+                onClick={() => handleDelete(user.id)}
+                style={deleteButtonStyle}
+              >
+                Delete
+              </button>
+            </td>
+          </tr>
+        ))}
+      </DataTable>
     </div>
   );
 }
-
-/* Reusable Styles for different components*/
-const filterStyle: React.CSSProperties = {
-  padding: "10px",
-  borderRadius: "6px",
-  border: "1px solid #ccc",
-  minWidth: "150px",
-  backgroundColor: "white"
-};
-
-const btnStyle: React.CSSProperties = {
-  padding: "10px 20px",
-  borderRadius: "6px",
-  border: "none",
-  color: "white",
-  cursor: "pointer",
-  fontWeight: "bold"
-};
-
-const deleteButtonStyle: React.CSSProperties = {
-  padding: "6px 12px",
-  backgroundColor: "#fff",
-  border: "1px solid #dc3545",
-  color: "#dc3545",
-  borderRadius: "4px",
-  cursor: "pointer",
-  fontSize: "0.85rem",
-  fontWeight: "500",
-  transition: "all 0.2s ease"
-};
-
-const bodyStyle: React.CSSProperties = {
-  padding: "15px",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap"
-};

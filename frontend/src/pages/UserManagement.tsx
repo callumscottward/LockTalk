@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import DataTable from '../components/DataTable';
+import DataTable, { filterStyle, btnStyle, bodyStyle } from '../components/DataTable';
 
 export default function UserManagement() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -89,62 +89,27 @@ export default function UserManagement() {
       </div>
 
       {/* --- Table Section --- */}
-      <div style={{ 
-        flex: 1, 
-        backgroundColor: "white", 
-        borderRadius: "8px", 
-        border: "1px solid #ddd", 
-        overflow: "hidden", // Important for contained scrolling
-        display: "flex",
-        flexDirection: "column"
-      }}>
-        <DataTable headers={["Name", "Email", "Role", "Status", "Joined Date"]}>
-          {users.map(user => (
-            <tr key={user.id} style={{ borderBottom: "1px solid #eee" }}>
-              <td style={bodyStyle}>{user.name}</td>
-              <td style={bodyStyle}>{user.email}</td>
-              <td style={bodyStyle}>{user.role}</td>
-              <td style={bodyStyle}>
-                <span style={{ 
-                  padding: "4px 8px", 
-                  borderRadius: "12px", 
-                  fontSize: "0.85rem",
-                  backgroundColor: user.status === "Active" ? "#d4edda" : "#f8d7da",
-                  color: user.status === "Active" ? "#155724" : "#721c24"
-                }}>
-                  {user.status}
-                </span>
-              </td>
-              <td style={bodyStyle}>{user.joined}</td>
-            </tr>
-          ))}
-        </DataTable>
-      </div>
+      <DataTable headers={["Name", "Email", "Role", "Status", "Joined Date"]}>
+        {users.map(user => (
+          <tr key={user.id} style={{ borderBottom: "1px solid #eee" }}>
+            <td style={bodyStyle}>{user.name}</td>
+            <td style={bodyStyle}>{user.email}</td>
+            <td style={bodyStyle}>{user.role}</td>
+            <td style={bodyStyle}>
+              <span style={{ 
+                padding: "4px 8px", 
+                borderRadius: "12px", 
+                fontSize: "0.85rem",
+                backgroundColor: user.status === "Active" ? "#d4edda" : "#f8d7da",
+                color: user.status === "Active" ? "#155724" : "#721c24"
+              }}>
+                {user.status}
+              </span>
+            </td>
+            <td style={bodyStyle}>{user.joined}</td>
+          </tr>
+        ))}
+      </DataTable>
     </div>
   );
 }
-
-/* Reusable Styles for different components*/
-const filterStyle: React.CSSProperties = {
-  padding: "10px",
-  borderRadius: "6px",
-  border: "1px solid #ccc",
-  minWidth: "150px",
-  backgroundColor: "white"
-};
-
-const btnStyle: React.CSSProperties = {
-  padding: "10px 20px",
-  borderRadius: "6px",
-  border: "none",
-  color: "white",
-  cursor: "pointer",
-  fontWeight: "bold"
-};
-
-const bodyStyle: React.CSSProperties = {
-  padding: "15px",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap"
-};

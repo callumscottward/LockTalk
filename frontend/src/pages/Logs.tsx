@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import DataTable from '../components/DataTable';
+import DataTable, { filterStyle, btnStyle, bodyStyle } from '../components/DataTable';
 
 interface Log {
   id: number;
@@ -120,52 +120,17 @@ export default function Logs() {
       </div>
 
       {/* Table */}
-      <div style={{ 
-        flex: 1, 
-        backgroundColor: "white", 
-        borderRadius: "8px", 
-        border: "1px solid #ddd", 
-        overflow: "hidden", 
-        display: "flex",
-        flexDirection: "column"
-      }}>
-        <DataTable headers={["Event Type", "To", "From", "Date/Time", "Status"]}>
-          {logs.map((log) => (
-            <tr key={log.id} style={{ borderBottom: "1px solid #eee" }}>
-              <td style={bodyStyle}>{log.event_type}</td>
-              <td style={bodyStyle}>{log.receiver}</td>
-              <td style={bodyStyle}>{log.sender}</td>
-              <td style={bodyStyle}>{new Date(log.timestamp).toLocaleString()}</td>
-              <td style={bodyStyle}>{log.success ? "Success" : "Fail"}</td>
-            </tr>
-          ))}
-        </DataTable>
-      </div>
+      <DataTable headers={["Event Type", "To", "From", "Date/Time", "Status"]}>
+        {logs.map((log) => (
+          <tr key={log.id} style={{ borderBottom: "1px solid #eee" }}>
+            <td style={bodyStyle}>{log.event_type}</td>
+            <td style={bodyStyle}>{log.receiver}</td>
+            <td style={bodyStyle}>{log.sender}</td>
+            <td style={bodyStyle}>{new Date(log.timestamp).toLocaleString()}</td>
+            <td style={bodyStyle}>{log.success ? "Success" : "Fail"}</td>
+          </tr>
+        ))}
+      </DataTable>
     </div>
   );
 }
-
-// Reusable Styles for different components.
-const filterStyle: React.CSSProperties = {
-  padding: "10px",
-  borderRadius: "6px",
-  border: "1px solid #ccc",
-  minWidth: "150px",
-  backgroundColor: "white"
-};
-
-const btnStyle: React.CSSProperties = {
-  padding: "10px 20px",
-  borderRadius: "6px",
-  border: "none",
-  color: "white",
-  cursor: "pointer",
-  fontWeight: "bold"
-};
-
-const bodyStyle: React.CSSProperties = {
-  padding: "15px",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap"
-};

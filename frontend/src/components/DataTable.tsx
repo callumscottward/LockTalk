@@ -1,8 +1,8 @@
 import React from "react";
 
 interface DataTableProps {
-  headers: string[];
-  children: React.ReactNode;
+  readonly headers: string[];
+  readonly children: React.ReactNode;
 }
 
 export default function DataTable({ headers, children }: DataTableProps) {

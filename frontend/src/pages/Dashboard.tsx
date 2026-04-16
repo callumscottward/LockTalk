@@ -188,7 +188,7 @@ export default function Messages() {
             currentConversationId.current = newConv.id;
             shouldOpenNewChat.current = false;
           }
-          
+
           return [newConv, ...prev];
         });
       }
@@ -846,9 +846,9 @@ export default function Messages() {
             style={{
               padding: "10px 15px",
               borderRadius: "50%",
-              backgroundColor: !isSocketReady ? "#F0F0F0" : "#075E54",
+              backgroundColor: isSocketReady ? "#075E54" : "#F0F0F0",
               color: "white",
-              cursor: !isSocketReady ? "not-allowed" : "pointer",
+              cursor: isSocketReady ? "pointer" : "not-allowed",
             }}
           >
             ➤
@@ -870,7 +870,7 @@ export default function Messages() {
               <option value="30">30 Days</option>
             </select>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
-              <button onClick={() => setActiveModal(null)} style={{ padding: "8px", background: "#ddd", border: "none", cursor: "pointer" }}>Cancel</button>
+              <button onClick={() => setActiveModal(null)} style={{ padding: "8px", background: "#ddd", border: "none", cursor: "pointer", borderRadius: "4px" }}>Cancel</button>
               <button onClick={() => setActiveModal(null)} style={{ padding: "8px", background: "#075E54", color: "white", border: "none", cursor: "pointer", borderRadius: "4px" }}>Save Settings</button>
             </div>
           </div>
@@ -1037,7 +1037,7 @@ export default function Messages() {
               )}
             </div>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
               <button onClick={() => {
                 setIsModalOpen(false);
                 setSelectedUsers([]);

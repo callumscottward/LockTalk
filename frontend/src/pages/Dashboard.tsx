@@ -71,6 +71,7 @@ function MessageBubbleText({
 export default function Messages() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [isSocketReady, setIsSocketReady] = useState<boolean>(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageInput, setMessageInput] = useState("");
   const [loadingConversations, setLoadingConversations] = useState(true);
@@ -240,6 +241,11 @@ export default function Messages() {
 
     const ws = new WebSocket(`ws://localhost:8000/ws/conversation/${activeConversationId}/`);
     socketRef.current = ws;
+    setIsSocketReady(false);
+
+    ws.onopen = () => setIsSocketReady(true);
+    ws.onclose = () => setIsSocketReady(false);
+    ws.onerror = () => setIsSocketReady(false);
 
     ws.onmessage = async (e) => {
       const data = JSON.parse(e.data);
@@ -276,6 +282,7 @@ export default function Messages() {
     // Cleanup on unmount
     return () => {
       if (ws.readyState === 1) ws.close();
+      setIsSocketReady(false);
     };
   }, [activeConversationId, currentUserEmail]);
 
@@ -821,8 +828,15 @@ export default function Messages() {
             onKeyDown={e => { if (e.key === "Enter") handleSendMessage(); }}
           />
           <button
+            disabled={!isSocketReady}
             onClick={handleSendMessage}
-            style={{ padding: "10px 15px", borderRadius: "50%", background: "#075E54", color: "white" }}
+            style={{
+              padding: "10px 15px",
+              borderRadius: "50%",
+              backgroundColor: !isSocketReady ? "#F0F0F0" : "#075E54",
+              color: "white",
+              cursor: !isSocketReady ? "not-allowed" : "pointer",
+            }}
           >
             ➤
           </button>

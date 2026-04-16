@@ -46,7 +46,8 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
-        <Route element={<ProtectedRoutes />}> // These sites redirect to /login if not logged in
+        {/* These sites redirect to /login if not logged in */}
+        <Route element={<ProtectedRoutes />}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/userProfile" element={<UserProfile />} />

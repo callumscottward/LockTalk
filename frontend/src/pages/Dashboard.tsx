@@ -108,7 +108,7 @@ export default function Messages() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/me/", {
+        const res = await fetch("/api/me/", {
           headers: authHeaders,
           credentials: "include"
         });
@@ -129,7 +129,7 @@ export default function Messages() {
   useEffect(() => {
     const fetchConversations = async () => {
       try {
-        const res = await fetch("http://localhost:8000/dashboard/", {
+        const res = await fetch("/api/dashboard/", {
           headers: authHeaders,
           credentials: "include",
         });
@@ -151,7 +151,8 @@ export default function Messages() {
 
   // Web Socket Effect that is used when adding a dealing with conversation 
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:8000/ws/conversations/");
+    const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${wsProtocol}://${window.location.host}/ws/conversations/`);
     conversationsSocketRef.current = ws;
 
     ws.onmessage = (e) => {
@@ -238,7 +239,8 @@ export default function Messages() {
       socketRef.current.close();
     }
 
-    const ws = new WebSocket(`ws://localhost:8000/ws/conversation/${activeConversationId}/`);
+    const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${wsProtocol}://${window.location.host}/ws/conversation/${activeConversationId}/`);
     socketRef.current = ws;
 
     ws.onmessage = async (e) => {
@@ -389,7 +391,7 @@ export default function Messages() {
     try {
       const csrfToken = getCookie("csrftoken");
 
-      const res = await fetch("http://localhost:8000/api/logout/", {
+      const res = await fetch("/api/logout/", {
         method: "POST",
         credentials: "include",
         headers: {
@@ -414,7 +416,7 @@ export default function Messages() {
     const fetchMessages = async () => {
       try {
         const res = await fetch(
-          `http://localhost:8000/dashboard/${activeConversationId}/messages/`,
+          `/api/dashboard/${activeConversationId}/messages/`,
           {
             headers: authHeaders,
             credentials: "include", // important if using session auth
@@ -464,7 +466,7 @@ export default function Messages() {
       setUsers([]);
       return;
     }
-    fetch(`http://localhost:8000/api/users/?search=${encodeURIComponent(searchQuery)}`, {
+    fetch(`/api/users/?search=${encodeURIComponent(searchQuery)}`, {
       credentials: "include"
     })
       .then(res => res.json())

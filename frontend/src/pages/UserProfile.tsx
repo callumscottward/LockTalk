@@ -26,7 +26,7 @@ export default function UserProfile() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/me/", {
+        const res = await fetch("/api/me/", {
           headers: authHeaders,
           credentials: "include"
         });

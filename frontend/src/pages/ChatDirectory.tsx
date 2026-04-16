@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import DataTable from '../components/DataTable';
 
 export default function ChatDirectory() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -103,42 +104,24 @@ export default function ChatDirectory() {
         display: "flex",
         flexDirection: "column"
       }}>
-        {/* Table Header (Fixed) */}
-        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-          <thead>
-            <tr style={{ backgroundColor: "#eee", textAlign: "left" }}>
-              <th style={headerStyle}>Chat Name</th>
-              <th style={headerStyle}>Participants</th>
-              <th style={headerStyle}>Date Created</th>
-              <th style={headerStyle}>Last Date Used</th>
-              <th style={{ ...headerStyle, textAlign: "center" }}>Actions</th>
+        <DataTable headers={["Chat Name", "Participants", "Date Created", "Last Date Used", "Actions"]}>
+          {filteredUsers.map(user => (
+            <tr key={user.id} style={{ borderBottom: "1px solid #eee" }}>
+              <td style={bodyStyle}>{user.chatName}</td>
+              <td style={bodyStyle}>{user.participants}</td>
+              <td style={bodyStyle}>{user.dateCreated}</td>
+              <td style={bodyStyle}>{user.lastDateUsed}</td>
+              <td style={{ ...bodyStyle, textAlign: "center" }}>
+                <button 
+                  onClick={() => handleDelete(user.id)}
+                  style={deleteButtonStyle}
+                >
+                  Delete
+                </button>
+              </td>
             </tr>
-          </thead>
-        </table>
-
-        {/* Table Body (Scrollable) */}
-        <div style={{ flex: 1, overflowY: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-            <tbody>
-              {filteredUsers.map(user => (
-                <tr key={user.id} style={{ borderBottom: "1px solid #eee" }}>
-                  <td style={bodyStyle}>{user.chatName}</td>
-                  <td style={bodyStyle}>{user.participants}</td>
-                  <td style={bodyStyle}>{user.dateCreated}</td>
-                  <td style={bodyStyle}>{user.lastDateUsed}</td>
-                  <td style={{ ...bodyStyle, textAlign: "center" }}>
-                    <button 
-                      onClick={() => handleDelete(user.id)}
-                      style={deleteButtonStyle}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+          ))}
+        </DataTable>
       </div>
     </div>
   );
@@ -172,13 +155,6 @@ const deleteButtonStyle: React.CSSProperties = {
   fontSize: "0.85rem",
   fontWeight: "500",
   transition: "all 0.2s ease"
-};
-
-const headerStyle: React.CSSProperties = {
-  padding: "15px",
-  fontWeight: "bold",
-  borderBottom: "2px solid #ddd",
-  textAlign: "center",
 };
 
 const bodyStyle: React.CSSProperties = {

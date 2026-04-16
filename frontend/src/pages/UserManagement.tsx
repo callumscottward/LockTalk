@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import DataTable from '../components/DataTable';
 
 export default function UserManagement() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -97,45 +98,27 @@ export default function UserManagement() {
         display: "flex",
         flexDirection: "column"
       }}>
-        {/* Table Header (Fixed) */}
-        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-          <thead>
-            <tr style={{ backgroundColor: "#eee", textAlign: "left" }}>
-              <th style={headerStyle}>Name</th>
-              <th style={headerStyle}>Email</th>
-              <th style={headerStyle}>Role</th>
-              <th style={headerStyle}>Status</th>
-              <th style={headerStyle}>Joined Date</th>
+        <DataTable headers={["Name", "Email", "Role", "Status", "Joined Date"]}>
+          {users.map(user => (
+            <tr key={user.id} style={{ borderBottom: "1px solid #eee" }}>
+              <td style={bodyStyle}>{user.name}</td>
+              <td style={bodyStyle}>{user.email}</td>
+              <td style={bodyStyle}>{user.role}</td>
+              <td style={bodyStyle}>
+                <span style={{ 
+                  padding: "4px 8px", 
+                  borderRadius: "12px", 
+                  fontSize: "0.85rem",
+                  backgroundColor: user.status === "Active" ? "#d4edda" : "#f8d7da",
+                  color: user.status === "Active" ? "#155724" : "#721c24"
+                }}>
+                  {user.status}
+                </span>
+              </td>
+              <td style={bodyStyle}>{user.joined}</td>
             </tr>
-          </thead>
-        </table>
-
-        {/* Table Body (Scrollable) */}
-        <div style={{ flex: 1, overflowY: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-            <tbody>
-              {users.map(user => (
-                <tr key={user.id} style={{ borderBottom: "1px solid #eee" }}>
-                  <td style={bodyStyle}>{user.name}</td>
-                  <td style={bodyStyle}>{user.email}</td>
-                  <td style={bodyStyle}>{user.role}</td>
-                  <td style={bodyStyle}>
-                    <span style={{ 
-                      padding: "4px 8px", 
-                      borderRadius: "12px", 
-                      fontSize: "0.85rem",
-                      backgroundColor: user.status === "Active" ? "#d4edda" : "#f8d7da",
-                      color: user.status === "Active" ? "#155724" : "#721c24"
-                    }}>
-                      {user.status}
-                    </span>
-                  </td>
-                  <td style={bodyStyle}>{user.joined}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+          ))}
+        </DataTable>
       </div>
     </div>
   );
@@ -157,13 +140,6 @@ const btnStyle: React.CSSProperties = {
   color: "white",
   cursor: "pointer",
   fontWeight: "bold"
-};
-
-const headerStyle: React.CSSProperties = {
-  padding: "15px",
-  fontWeight: "bold",
-  borderBottom: "2px solid #ddd",
-  textAlign: "center",
 };
 
 const bodyStyle: React.CSSProperties = {

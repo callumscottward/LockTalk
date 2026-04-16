@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import DataTable from '../components/DataTable';
 
 interface Log {
   id: number;
@@ -128,35 +129,17 @@ export default function Logs() {
         display: "flex",
         flexDirection: "column"
       }}>
-        {/* Table Header */}
-        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-          <thead>
-            <tr style={{ backgroundColor: "#eee", textAlign: "left" }}>
-              <th style={headerStyle}>Event Type</th>
-              <th style={headerStyle}>To</th>
-              <th style={headerStyle}>From</th>
-              <th style={headerStyle}>Date/Time</th>
-              <th style={headerStyle}>Status</th>
+        <DataTable headers={["Event Type", "To", "From", "Date/Time", "Status"]}>
+          {logs.map((log) => (
+            <tr key={log.id} style={{ borderBottom: "1px solid #eee" }}>
+              <td style={bodyStyle}>{log.event_type}</td>
+              <td style={bodyStyle}>{log.receiver}</td>
+              <td style={bodyStyle}>{log.sender}</td>
+              <td style={bodyStyle}>{new Date(log.timestamp).toLocaleString()}</td>
+              <td style={bodyStyle}>{log.success ? "Success" : "Fail"}</td>
             </tr>
-          </thead>
-        </table>
-
-        {/* Table Body (Scrollable) */}
-        <div style={{ flex: 1, overflowY: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-            <tbody>
-              {logs.map((log) => (
-                <tr key={log.id} style={{ borderBottom: "1px solid #eee" }}>
-                  <td style={bodyStyle}>{log.event_type}</td>
-                  <td style={bodyStyle}>{log.receiver}</td>
-                  <td style={bodyStyle}>{log.sender}</td>
-                  <td style={bodyStyle}>{new Date(log.timestamp).toLocaleString()}</td>
-                  <td style={bodyStyle}>{log.success ? "Success" : "Fail"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+          ))}
+        </DataTable>
       </div>
     </div>
   );
@@ -178,13 +161,6 @@ const btnStyle: React.CSSProperties = {
   color: "white",
   cursor: "pointer",
   fontWeight: "bold"
-};
-
-const headerStyle: React.CSSProperties = {
-  padding: "15px",
-  fontWeight: "bold",
-  borderBottom: "2px solid #ddd",
-  textAlign: "center",
 };
 
 const bodyStyle: React.CSSProperties = {

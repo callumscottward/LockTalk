@@ -1,15 +1,19 @@
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
+from rest_framework import generics, permissions
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from .models import Message, Conversation, Log
 from .serializers import ConversationSerializer
+from .serializers import CurrentUserSerializer
 from .serializers import MessageSerializer
 from .serializers import LogSerializer
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 
 User = get_user_model()
 
@@ -164,11 +168,20 @@ class RemoveMemberView(APIView):
             ConversationSerializer(conversation, context={"request": request}).data,
             status=200
         )
-    
+
+
 class LogListView(APIView):
-    permission_classes = [IsAuthenticated]
+    # Changed from IsAuthenticated so admins can only see the logs even fetching them
+    permission_classes = [IsAdminUser]
 
     def get(self, request):
         logs = Log.objects.all().order_by('-timestamp')  # newest first
         serializer = LogSerializer(logs, many=True)
         return Response(serializer.data)
+    
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_current_user(request):
+    # This uses the UserSerializer you modified with 'is_staff'
+    serializer = CurrentUserSerializer(request.user)
+    return Response(serializer.data)

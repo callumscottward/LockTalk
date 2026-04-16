@@ -15,7 +15,7 @@ export default function UserProfile() {
 
   // The current calls
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
-  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentUserUsername, setCurrentUserUsername] = useState<string | null>(null);
 
   const authHeaders = {
@@ -26,12 +26,12 @@ export default function UserProfile() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/me/", {
+        const res = await fetch("http://localhost:8000/api/verify-staff/", {
           headers: authHeaders,
           credentials: "include"
         });
         const data = await res.json();
-        setCurrentUserRole(data.role);
+        setCurrentUser(data);
         setCurrentUserUsername(data.username);
         setCurrentUserEmail(data.email);
       } catch (err) {
@@ -94,8 +94,7 @@ export default function UserProfile() {
 
           <div>
             <label style={{ fontWeight: 'bold', color: 'gray', display: 'block', fontSize: '0.8rem', textTransform: 'uppercase' }}>Role</label>
-            {/* <div style={{ fontSize: '1.1rem', marginTop: '5px', color: '#075E54', fontWeight: 'bold' }}>{currentUserRole}</div> */}
-            <div style={{ fontSize: '1.1rem', marginTop: '5px', color: '#075E54', fontWeight: 'bold' }}>{"Admin"}</div>
+            <div style={{ fontSize: '1.1rem', marginTop: '5px', color: '#075E54', fontWeight: 'bold' }}>{currentUser?.is_staff ? 'Admin' : 'User'}</div>
           </div>
 
           {/* Username is saved as email */}

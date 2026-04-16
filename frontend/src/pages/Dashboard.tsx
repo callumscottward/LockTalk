@@ -22,6 +22,8 @@ interface Message {
 interface User {
   id: number;
   username: string;
+  email: string
+  is_staff: boolean
 }
 
 function getCookie(name: string) {
@@ -76,6 +78,7 @@ export default function Messages() {
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
   const [currentUserId, setcurrentUserId] = useState<number | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -108,11 +111,12 @@ export default function Messages() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/me/", {
+        const res = await fetch("http://localhost:8000/api/verify-staff/", {
           headers: authHeaders,
           credentials: "include"
         });
         const data = await res.json();
+        setCurrentUser(data);
         setCurrentUserEmail(data.username);
         setcurrentUserId(data.id)
 
@@ -719,9 +723,14 @@ export default function Messages() {
               }}
               >
                 <button style={menuItemStyle} onClick={() => window.location.href = "/UserProfile"}>User Profile</button>
-                <button style={menuItemStyle} onClick={() => window.location.href = "/UserManagement"}>User Management</button>
-                <button style={menuItemStyle} onClick={() => window.location.href = "/Logs"}>Logs</button>
-                <button style={menuItemStyle} onClick={() => window.location.href = "/ChatDirectory"}>Chat Directory</button>
+
+                {currentUser?.is_staff && (
+                  <>
+                    <button style={menuItemStyle} onClick={() => window.location.href = "/UserManagement"}>User Management</button>
+                    <button style={menuItemStyle} onClick={() => window.location.href = "/Logs"}>Logs</button>
+                    <button style={menuItemStyle} onClick={() => window.location.href = "/ChatDirectory"}>Chat Directory</button>
+                  </>
+                )}
 
                 <hr style={{ margin: 0, border: "none", borderTop: "1px solid #eee" }} />
 

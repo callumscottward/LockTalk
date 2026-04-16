@@ -10,6 +10,8 @@ from .models import Message, Conversation, Log
 from .serializers import ConversationSerializer
 from .serializers import MessageSerializer
 from .serializers import LogSerializer
+from .logs_rotate import rotate_logs_if_needed
+
 
 User = get_user_model()
 
@@ -124,4 +126,5 @@ class LogListView(APIView):
     def get(self, request):
         logs = Log.objects.all().order_by('-timestamp')  # newest first
         serializer = LogSerializer(logs, many=True)
+        rotate_logs_if_needed()
         return Response(serializer.data)

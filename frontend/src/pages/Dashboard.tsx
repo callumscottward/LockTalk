@@ -657,9 +657,20 @@ export default function Messages() {
                 <div style={{ position: "relative" }} ref={settingsRef}>
                   <button
                     onClick={() => setIsSettingsDropdownOpen(!isSettingsDropdownOpen)}
-                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: "16px" }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "24px",
+                      padding: "0px 8px",
+                      lineHeight: "8px",
+                      transform: "translateY(-2px)",
+                    }}
                   >
-                    ⚙️
+                    ⚙
                   </button>
                   {isSettingsDropdownOpen && (
                     <div style={{

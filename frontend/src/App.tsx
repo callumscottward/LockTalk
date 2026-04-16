@@ -8,21 +8,74 @@ import Logs from './pages/Logs';
 import Signup from './pages/Signup';
 import ChatDirectory from './pages/ChatDirectory';
 import ProtectedRoutes from './ProtectedRoutes';
+import { useState, useEffect } from 'react';
+
+// Helpful for the staff stuff
+const StaffRoute = ({ user, loading, children }: { user: any, loading: boolean, children: React.ReactElement }) => {
+  if (loading) return <div>Loading...</div>; // Prevent redirect before we know who the user is
+  
+  if (!user || user.is_staff !== true) {
+    // If not staff, redirect to dashboard (or landing)
+    return <Navigate to="/dashboard" replace />;
+  }
+  return children;
+};
 
 function App() {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Replace with your actual auth-check endpoint 
+    // This should return the user object with 'is_staff' from your serializer
+    fetch("http://localhost:8000/api/verify-staff/", {
+      credentials: "include"
+    }) 
+      .then((res) => {
+        if (res.ok) return res.json();
+        throw new Error("Not logged in");
+      })
+      .then((data) => setUser(data))
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <div>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
-        <Route element={<ProtectedRoutes />}>
+        <Route element={<ProtectedRoutes />}> // These sites redirect to /login if not logged in
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/userProfile" element={<UserProfile />} />
-          <Route path="/userManagement" element={<UserManagement />} />
-          <Route path="/logs" element={<Logs />} />
-          <Route path="/chatDirectory" element={<ChatDirectory />} />
+          
+          {/* Restricted Staff Routes */}
+          <Route 
+            path="/userManagement" 
+            element={
+              <StaffRoute user={user} loading={loading}>
+                <UserManagement />
+              </StaffRoute>
+            } 
+          />
+          <Route 
+            path="/logs" 
+            element={
+              <StaffRoute user={user} loading={loading}>
+                <Logs />
+              </StaffRoute>
+            } 
+          />
+          <Route 
+            path="/chatDirectory" 
+            element={
+              <StaffRoute user={user} loading={loading}>
+                <ChatDirectory />
+              </StaffRoute>
+            } 
+          />
         </Route>
       </Routes>
     </div>

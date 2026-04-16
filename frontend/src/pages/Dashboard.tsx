@@ -22,6 +22,8 @@ interface Message {
 interface User {
   id: number;
   username: string;
+  email: string
+  is_staff: boolean
 }
 
 function getCookie(name: string) {
@@ -77,6 +79,7 @@ export default function Messages() {
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
   const [currentUserId, setcurrentUserId] = useState<number | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -110,11 +113,12 @@ export default function Messages() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/me/", {
+        const res = await fetch("http://localhost:8000/api/verify-staff/", {
           headers: authHeaders,
           credentials: "include"
         });
         const data = await res.json();
+        setCurrentUser(data);
         setCurrentUserEmail(data.username);
         setcurrentUserId(data.id)
 
@@ -424,6 +428,25 @@ export default function Messages() {
       console.error("Logout error:", err);
     }
   };
+
+  const formatDateLabel = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const today = new Date();
+
+    const isToday =
+      date.toDateString() === today.toDateString();
+
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    const isYesterday =
+      date.toDateString() === yesterday.toDateString();
+
+    if (isToday) return "Today";
+    if (isYesterday) return "Yesterday";
+
+  return date.toLocaleDateString();
+};
 
   // Fetch existing messages whenever a conversation is selected
   useEffect(() => {
@@ -750,9 +773,14 @@ export default function Messages() {
               }}
               >
                 <button style={menuItemStyle} onClick={() => window.location.href = "/UserProfile"}>User Profile</button>
-                <button style={menuItemStyle} onClick={() => window.location.href = "/UserManagement"}>User Management</button>
-                <button style={menuItemStyle} onClick={() => window.location.href = "/Logs"}>Logs</button>
-                <button style={menuItemStyle} onClick={() => window.location.href = "/ChatDirectory"}>Chat Directory</button>
+
+                {currentUser?.is_staff && (
+                  <>
+                    <button style={menuItemStyle} onClick={() => window.location.href = "/UserManagement"}>User Management</button>
+                    <button style={menuItemStyle} onClick={() => window.location.href = "/Logs"}>Logs</button>
+                    <button style={menuItemStyle} onClick={() => window.location.href = "/ChatDirectory"}>Chat Directory</button>
+                  </>
+                )}
 
                 <hr style={{ margin: 0, border: "none", borderTop: "1px solid #eee" }} />
 
@@ -769,7 +797,32 @@ export default function Messages() {
           {messages.length === 0 ? (
             <p>No messages yet!</p>
           ) : (
-            messages.map(msg => (
+            messages.map((msg, index) => {
+              const prevMsg = messages[index - 1];
+
+              const currentDate = new Date(msg.timestamp || "").toDateString();
+              const prevDate = prevMsg
+                ? new Date(prevMsg.timestamp || "").toDateString()
+                : null;
+
+              const showDateDivider = currentDate !== prevDate;
+
+        return (
+            <>
+              {/* DATE DIVIDER */}
+              {showDateDivider && (
+              <div
+                style={{
+                  textAlign: "center",
+                  margin: "10px 0",
+                  color: "#888",
+                  fontSize: "12px",
+                  width: "100%" // ensures it's centered across chat
+                }}
+                  >
+                {new Date(msg.timestamp || "").toLocaleDateString()}
+              </div>
+                )}
               <div
                 key={msg.id}
                 // Logic for hovering
@@ -838,7 +891,9 @@ export default function Messages() {
                     )}
                 </div>
               </div>
-            ))
+              </>
+            );
+          })
           )}
         </div>
 

@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Conversation, Message, Log
+from django.contrib.auth import get_user_model
 
 class MessageSerializer(serializers.ModelSerializer):
     # We want the sender's username, not their ID number
@@ -9,6 +10,16 @@ class MessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
         fields = ["id", "sender", "content", "created_at", "sender_email"]
+
+
+User = get_user_model()
+
+class CurrentUserSerializer(serializers.ModelSerializer):
+    is_staff = serializers.ReadOnlyField()
+    class Meta:
+        model = User
+        # Staff stuff for admin only
+        fields = ['id', 'username', 'email', 'is_staff']
 
 class ConversationSerializer(serializers.ModelSerializer):
     name = serializers.CharField(allow_blank=True)
@@ -67,6 +78,7 @@ class ConversationSerializer(serializers.ModelSerializer):
         return data
     
 class LogSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Log
         fields = ['id', 'event_type', 'sender', 'receiver', 'success', 'timestamp']

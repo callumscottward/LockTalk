@@ -154,7 +154,7 @@ export default function Logs() {
         <div style={{ flex: 1, overflowY: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
             <tbody>
-              {logs.map((log) => (
+              {filteredLogs.map((log) => (
                 <tr key={log.id} style={{ borderBottom: "1px solid #eee" }}>
                   <td style={bodyStyle}>{log.event_type}</td>
                   <td style={bodyStyle}>{log.receiver}</td>

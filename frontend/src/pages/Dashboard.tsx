@@ -411,6 +411,25 @@ export default function Messages() {
     }
   };
 
+  const formatDateLabel = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const today = new Date();
+
+    const isToday =
+      date.toDateString() === today.toDateString();
+
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    const isYesterday =
+      date.toDateString() === yesterday.toDateString();
+
+    if (isToday) return "Today";
+    if (isYesterday) return "Yesterday";
+
+  return date.toLocaleDateString();
+};
+
   // Fetch existing messages whenever a conversation is selected
   useEffect(() => {
     if (!activeConversationId || !currentUserEmail) return;
@@ -747,7 +766,32 @@ export default function Messages() {
           {messages.length === 0 ? (
             <p>No messages yet!</p>
           ) : (
-            messages.map(msg => (
+            messages.map((msg, index) => {
+              const prevMsg = messages[index - 1];
+
+              const currentDate = new Date(msg.timestamp || "").toDateString();
+              const prevDate = prevMsg
+                ? new Date(prevMsg.timestamp || "").toDateString()
+                : null;
+
+              const showDateDivider = currentDate !== prevDate;
+
+        return (
+            <>
+              {/* DATE DIVIDER */}
+              {showDateDivider && (
+              <div
+                style={{
+                  textAlign: "center",
+                  margin: "10px 0",
+                  color: "#888",
+                  fontSize: "12px",
+                  width: "100%" // ensures it's centered across chat
+                }}
+                  >
+                {new Date(msg.timestamp || "").toLocaleDateString()}
+              </div>
+                )}
               <div
                 key={msg.id}
                 // Logic for hovering
@@ -814,7 +858,9 @@ export default function Messages() {
                     )}
                 </div>
               </div>
-            ))
+              </>
+            );
+          })
           )}
         </div>
 

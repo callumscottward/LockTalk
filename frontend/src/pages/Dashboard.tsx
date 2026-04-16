@@ -936,7 +936,7 @@ export default function Messages() {
             width: "300px", boxShadow: "0 2px 10px rgba(0,0,0,0.1)"
           }}>
             <h3>New Chat</h3>
-            <div style={{ display: "flex", flexWrap: "wrap" }}>
+            <div style={{ position: "relative", display: "flex", flexWrap: "wrap" }}>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "5px", marginBottom: "10px" }}>
                 {selectedUsers.map((username) => (
                   <div

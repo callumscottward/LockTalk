@@ -95,6 +95,7 @@ export default function Messages() {
   const conversationsSocketRef = useRef<WebSocket | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const activeChat = conversations.find(c => c.id === activeConversationId)
+  const shouldOpenNewChat = useRef(false);
 
   const currentUserIdRef = useRef<number | null>(null);
   const currentUserEmailRef = useRef<string | null>(null);
@@ -172,13 +173,22 @@ export default function Messages() {
           if (existingIndex !== -1) {
             const updated = [...prev];
             const existing = updated.splice(existingIndex, 1)[0];
-            setActiveConversationId(existing.id);
-            currentConversationId.current = existing.id
+            
+            if (shouldOpenNewChat.current) {
+              setActiveConversationId(existing.id);
+              currentConversationId.current = existing.id;
+              shouldOpenNewChat.current = false;
+            }
+
             return [existing, ...updated];
           }
 
-          setActiveConversationId(newConv.id);
-          currentConversationId.current = newConv.id
+          if (shouldOpenNewChat.current) {
+            setActiveConversationId(newConv.id);
+            currentConversationId.current = newConv.id;
+            shouldOpenNewChat.current = false;
+          }
+          
           return [newConv, ...prev];
         });
       }
@@ -243,6 +253,7 @@ export default function Messages() {
     socketRef.current = ws;
     setIsSocketReady(false);
 
+    // Update state used for deactivating Send button if socket isn't open
     ws.onopen = () => setIsSocketReady(true);
     ws.onclose = () => setIsSocketReady(false);
     ws.onerror = () => setIsSocketReady(false);
@@ -501,10 +512,12 @@ export default function Messages() {
     );
   };
 
-  //Logic for cerating the chat when the button is pressed
+  //Logic for creating the chat when the button is pressed
   const handleCreateChat = () => {
     if (!selectedUsers.length || !conversationsSocketRef.current) return;
 
+    shouldOpenNewChat.current = true; // Auto-open new conversation just for sender
+    
     conversationsSocketRef.current.send(JSON.stringify({
       action: "create_group",
       name: newConversationName, // optional

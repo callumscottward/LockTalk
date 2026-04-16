@@ -58,7 +58,9 @@ export default function UserManagement() {
               padding: "12px", 
               borderRadius: "6px", 
               border: "1px solid #ccc",
-              fontSize: "1rem"
+              fontSize: "1rem",
+              boxSizing: "border-box",
+
             }}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -160,7 +162,8 @@ const btnStyle: React.CSSProperties = {
 const headerStyle: React.CSSProperties = {
   padding: "15px",
   fontWeight: "bold",
-  borderBottom: "2px solid #ddd"
+  borderBottom: "2px solid #ddd",
+  textAlign: "center",
 };
 
 const bodyStyle: React.CSSProperties = {

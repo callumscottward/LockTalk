@@ -59,7 +59,7 @@ export default function ChatDirectory() {
           <span style={{ marginRight: "5px" }}>←</span>
         </button>
 
-        <h2 style={{ margin: "0 0 15px 0" }}>User Management</h2>
+        <h2 style={{ margin: "0 0 15px 0" }}>Chat Directory</h2>
         
         {/* Line 1: Search Bar */}
         <div style={{ marginBottom: "12px" }}>
@@ -177,7 +177,8 @@ const deleteButtonStyle: React.CSSProperties = {
 const headerStyle: React.CSSProperties = {
   padding: "15px",
   fontWeight: "bold",
-  borderBottom: "2px solid #ddd"
+  borderBottom: "2px solid #ddd",
+  textAlign: "center",
 };
 
 const bodyStyle: React.CSSProperties = {

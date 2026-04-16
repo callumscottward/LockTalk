@@ -113,7 +113,7 @@ export default function UserProfile() {
             // onclick here, would have the call to do something
             style={{ 
               background: '#075E54', 
-              color: 'black', 
+              color: 'white', 
               border: 'none', 
               padding: '12px 24px', 
               borderRadius: '8px', 

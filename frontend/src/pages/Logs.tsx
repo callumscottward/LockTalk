@@ -43,22 +43,12 @@ export default function Logs() {
 
   if (loading) return <p>Loading logs...</p>;
 
-  // // TEMP DATA. Delete when actual implementation is put in.
-  // const logs = Array.from({ length: 10 }, (_, i) => ({
-  //   logNum: i + 1,
-  //   eventType: i % 2 === 0 ? "SMS" : "Login",
-  //   to: 'Mary',
-  //   from: 'Marge',
-  //   dateTime: '2026-03-21, 3:11PM',
-  //   status: i % 3 === 0 ? "Fail" : "Success",
-  // }));
-
   return (
     <div style={{ 
       display: "flex", 
       flexDirection: "column", 
       height: "100vh", 
-      width: "100%", 
+      width: "100vw", 
       overflow: "hidden", 
       backgroundColor: "#f8f9fa",
       padding: "20px",
@@ -86,7 +76,7 @@ export default function Logs() {
           <span style={{ marginRight: "5px" }}>←</span>
         </button>
 
-        <h2 style={{ margin: "0 0 15px 0" }}>User Management</h2>
+        <h2 style={{ margin: "0 0 15px 0" }}>Logs</h2>
         
         {/* Search Bar */}
         <div style={{ marginBottom: "12px" }}>
@@ -98,7 +88,8 @@ export default function Logs() {
               padding: "12px", 
               borderRadius: "6px", 
               border: "1px solid #ccc",
-              fontSize: "1rem"
+              fontSize: "1rem",
+              boxSizing: "border-box"
             }}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -192,7 +183,8 @@ const btnStyle: React.CSSProperties = {
 const headerStyle: React.CSSProperties = {
   padding: "15px",
   fontWeight: "bold",
-  borderBottom: "2px solid #ddd"
+  borderBottom: "2px solid #ddd",
+  textAlign: "center",
 };
 
 const bodyStyle: React.CSSProperties = {

@@ -629,12 +629,12 @@ export default function Messages() {
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         <div
           style={{
-            padding: "15px",
             borderBottom: "1px solid #ddd",
             background: "#eee",
             display: "flex",
             alignItems: "center",
-            position: "relative"
+            position: "relative",
+            minHeight: "70px",
           }}
         >
           {/* CENTERED CONTENT */}
@@ -728,7 +728,7 @@ export default function Messages() {
                 border: "none",
                 fontSize: "20px",
                 cursor: "pointer",
-                padding: "5px"
+                padding: "5px",
               }}
             >
               ⋮

@@ -820,7 +820,7 @@ export default function Messages() {
                   width: "100%" // ensures it's centered across chat
                 }}
                   >
-                {new Date(msg.timestamp || "").toLocaleDateString()}
+                {formatDateLabel(new Date(msg.timestamp || "").toLocaleDateString())}
               </div>
                 )}
               <div

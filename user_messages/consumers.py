@@ -11,7 +11,7 @@ from user_messages.models import Log
 User = get_user_model()
 
 @database_sync_to_async
-def create_logs(conversation, user):
+def create_msg_logs(conversation, user):
     other_participants = conversation.participants.exclude(id=user.id)
     for participant in other_participants:
         Log.objects.create(
@@ -20,6 +20,24 @@ def create_logs(conversation, user):
             receiver=participant.username,
             success=True
         )
+
+@database_sync_to_async
+def create_del_msg_logs(user):
+    Log.objects.create(
+        event_type='DELETE_SMS',
+        sender=user.username,
+        receiver='SYSTEM',
+        success=True
+    )
+
+@database_sync_to_async
+def create_del_convo_logs(user):
+    Log.objects.create(
+        event_type='DELETE_CONVO',
+        sender=user.username,
+        receiver='SYSTEM',
+        success=True
+    )
 
 def delete_old_messages():
     from django.utils import timezone
@@ -99,7 +117,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 }
             )
             
-            await create_logs(self.conversation, self.user)
+            await create_msg_logs(self.conversation, self.user)
 
             await database_sync_to_async(
                 lambda: Conversation.objects.filter(id=self.conversation_id)
@@ -124,12 +142,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
         try:
             message = await database_sync_to_async(lambda: Message.objects.get(id=message_id))()
 
+            await create_del_msg_logs(user);
+
             await database_sync_to_async(lambda: message.delete())()
 
             await self.channel_layer.group_send(
                 self.group_name,
                 {"type": "message_deleted", "message_id": message_id}
             )
+    
         except Message.DoesNotExist:
             pass
             
@@ -257,6 +278,8 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
 
             # Delete conversation (messages auto-delete via CASCADE)
             await database_sync_to_async(conversation.delete)()
+            
+            await create_del_convo_logs(user);
 
             await self.channel_layer.group_send(
                 "conversations",

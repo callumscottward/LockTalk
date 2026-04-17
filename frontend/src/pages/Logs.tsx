@@ -121,7 +121,7 @@ export default function Logs() {
 
       {/* Table */}
       <DataTable headers={["Event Type", "To", "From", "Date/Time", "Status"]}>
-        {logs.map((log) => (
+        {filteredLogs.map((log) => (
           <tr key={log.id} style={{ borderBottom: "1px solid #eee" }}>
             <td style={bodyStyle}>{log.event_type}</td>
             <td style={bodyStyle}>{log.receiver}</td>

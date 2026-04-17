@@ -22,6 +22,8 @@ interface Message {
 interface User {
   id: number;
   username: string;
+  email: string
+  is_staff: boolean
 }
 
 function getCookie(name: string) {
@@ -71,11 +73,13 @@ function MessageBubbleText({
 export default function Messages() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [isSocketReady, setIsSocketReady] = useState<boolean>(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageInput, setMessageInput] = useState("");
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
   const [currentUserId, setcurrentUserId] = useState<number | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -94,6 +98,7 @@ export default function Messages() {
   const conversationsSocketRef = useRef<WebSocket | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const activeChat = conversations.find(c => c.id === activeConversationId)
+  const shouldOpenNewChat = useRef(false);
 
   const currentUserIdRef = useRef<number | null>(null);
   const currentUserEmailRef = useRef<string | null>(null);
@@ -108,11 +113,12 @@ export default function Messages() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch("/api/me/", {
+        const res = await fetch("/api/verify-staff/", {
           headers: authHeaders,
           credentials: "include"
         });
         const data = await res.json();
+        setCurrentUser(data);
         setCurrentUserEmail(data.username);
         setcurrentUserId(data.id)
 
@@ -172,13 +178,22 @@ export default function Messages() {
           if (existingIndex !== -1) {
             const updated = [...prev];
             const existing = updated.splice(existingIndex, 1)[0];
-            setActiveConversationId(existing.id);
-            currentConversationId.current = existing.id
+            
+            if (shouldOpenNewChat.current) {
+              setActiveConversationId(existing.id);
+              currentConversationId.current = existing.id;
+              shouldOpenNewChat.current = false;
+            }
+
             return [existing, ...updated];
           }
 
-          setActiveConversationId(newConv.id);
-          currentConversationId.current = newConv.id
+          if (shouldOpenNewChat.current) {
+            setActiveConversationId(newConv.id);
+            currentConversationId.current = newConv.id;
+            shouldOpenNewChat.current = false;
+          }
+
           return [newConv, ...prev];
         });
       }
@@ -242,6 +257,12 @@ export default function Messages() {
     const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
     const ws = new WebSocket(`${wsProtocol}://${window.location.host}/ws/conversation/${activeConversationId}/`);
     socketRef.current = ws;
+    setIsSocketReady(false);
+
+    // Update state used for deactivating Send button if socket isn't open
+    ws.onopen = () => setIsSocketReady(true);
+    ws.onclose = () => setIsSocketReady(false);
+    ws.onerror = () => setIsSocketReady(false);
 
     ws.onmessage = async (e) => {
       const data = JSON.parse(e.data);
@@ -278,6 +299,7 @@ export default function Messages() {
     // Cleanup on unmount
     return () => {
       if (ws.readyState === 1) ws.close();
+      setIsSocketReady(false);
     };
   }, [activeConversationId, currentUserEmail]);
 
@@ -409,6 +431,25 @@ export default function Messages() {
     }
   };
 
+  const formatDateLabel = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const today = new Date();
+
+    const isToday =
+      date.toDateString() === today.toDateString();
+
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    const isYesterday =
+      date.toDateString() === yesterday.toDateString();
+
+    if (isToday) return "Today";
+    if (isYesterday) return "Yesterday";
+
+  return date.toLocaleDateString();
+};
+
   // Fetch existing messages whenever a conversation is selected
   useEffect(() => {
     if (!activeConversationId || !currentUserEmail) return;
@@ -496,10 +537,12 @@ export default function Messages() {
     );
   };
 
-  //Logic for cerating the chat when the button is pressed
+  //Logic for creating the chat when the button is pressed
   const handleCreateChat = () => {
     if (!selectedUsers.length || !conversationsSocketRef.current) return;
 
+    shouldOpenNewChat.current = true; // Auto-open new conversation just for sender
+    
     conversationsSocketRef.current.send(JSON.stringify({
       action: "create_group",
       name: newConversationName, // optional
@@ -611,12 +654,12 @@ export default function Messages() {
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         <div
           style={{
-            padding: "15px",
             borderBottom: "1px solid #ddd",
             background: "#eee",
             display: "flex",
             alignItems: "center",
-            position: "relative"
+            position: "relative",
+            minHeight: "70px",
           }}
         >
           {/* CENTERED CONTENT */}
@@ -639,9 +682,20 @@ export default function Messages() {
                 <div style={{ position: "relative" }} ref={settingsRef}>
                   <button
                     onClick={() => setIsSettingsDropdownOpen(!isSettingsDropdownOpen)}
-                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: "16px" }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "24px",
+                      padding: "0px 8px",
+                      lineHeight: "8px",
+                      transform: "translateY(-2px)",
+                    }}
                   >
-                    ⚙️
+                    ⚙
                   </button>
                   {isSettingsDropdownOpen && (
                     <div style={{
@@ -699,7 +753,7 @@ export default function Messages() {
                 border: "none",
                 fontSize: "20px",
                 cursor: "pointer",
-                padding: "5px"
+                padding: "5px",
               }}
             >
               ⋮
@@ -721,9 +775,14 @@ export default function Messages() {
               }}
               >
                 <button style={menuItemStyle} onClick={() => window.location.href = "/UserProfile"}>User Profile</button>
-                <button style={menuItemStyle} onClick={() => window.location.href = "/UserManagement"}>User Management</button>
-                <button style={menuItemStyle} onClick={() => window.location.href = "/Logs"}>Logs</button>
-                <button style={menuItemStyle} onClick={() => window.location.href = "/ChatDirectory"}>Chat Directory</button>
+
+                {currentUser?.is_staff && (
+                  <>
+                    <button style={menuItemStyle} onClick={() => window.location.href = "/UserManagement"}>User Management</button>
+                    <button style={menuItemStyle} onClick={() => window.location.href = "/Logs"}>Logs</button>
+                    <button style={menuItemStyle} onClick={() => window.location.href = "/ChatDirectory"}>Chat Directory</button>
+                  </>
+                )}
 
                 <hr style={{ margin: 0, border: "none", borderTop: "1px solid #eee" }} />
 
@@ -740,7 +799,32 @@ export default function Messages() {
           {messages.length === 0 ? (
             <p>No messages yet!</p>
           ) : (
-            messages.map(msg => (
+            messages.map((msg, index) => {
+              const prevMsg = messages[index - 1];
+
+              const currentDate = new Date(msg.timestamp || "").toDateString();
+              const prevDate = prevMsg
+                ? new Date(prevMsg.timestamp || "").toDateString()
+                : null;
+
+              const showDateDivider = currentDate !== prevDate;
+
+        return (
+            <>
+              {/* DATE DIVIDER */}
+              {showDateDivider && (
+              <div
+                style={{
+                  textAlign: "center",
+                  margin: "10px 0",
+                  color: "#888",
+                  fontSize: "12px",
+                  width: "100%" // ensures it's centered across chat
+                }}
+                  >
+                {formatDateLabel(new Date(msg.timestamp || "").toLocaleDateString())}
+              </div>
+                )}
               <div
                 key={msg.id}
                 // Logic for hovering
@@ -809,7 +893,9 @@ export default function Messages() {
                     )}
                 </div>
               </div>
-            ))
+              </>
+            );
+          })
           )}
         </div>
 
@@ -823,8 +909,15 @@ export default function Messages() {
             onKeyDown={e => { if (e.key === "Enter") handleSendMessage(); }}
           />
           <button
+            disabled={!isSocketReady}
             onClick={handleSendMessage}
-            style={{ padding: "10px 15px", borderRadius: "50%", background: "#075E54", color: "white" }}
+            style={{
+              padding: "10px 15px",
+              borderRadius: "50%",
+              backgroundColor: isSocketReady ? "#075E54" : "#F0F0F0",
+              color: "white",
+              cursor: isSocketReady ? "pointer" : "not-allowed",
+            }}
           >
             ➤
           </button>
@@ -845,7 +938,7 @@ export default function Messages() {
               <option value="30">30 Days</option>
             </select>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
-              <button onClick={() => setActiveModal(null)} style={{ padding: "8px", background: "#ddd", border: "none", cursor: "pointer" }}>Cancel</button>
+              <button onClick={() => setActiveModal(null)} style={{ padding: "8px", background: "#ddd", border: "none", cursor: "pointer", borderRadius: "4px" }}>Cancel</button>
               <button onClick={() => setActiveModal(null)} style={{ padding: "8px", background: "#075E54", color: "white", border: "none", cursor: "pointer", borderRadius: "4px" }}>Save Settings</button>
             </div>
           </div>
@@ -1012,7 +1105,7 @@ export default function Messages() {
               )}
             </div>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
               <button onClick={() => {
                 setIsModalOpen(false);
                 setSelectedUsers([]);

@@ -6,13 +6,16 @@ Welcome to LockTalk, a project created by Brendan Farrell, Maddie Luth, Miah Mas
 
 # Release Notes
 
-## Milestone 3 Features
+## Milestone 4 Features
 
-- Conversation creation and deletion in frontend
-- Deletion of sent messages
-- Message encryption using fixed-key AES
-- Automated visual documentation creation
-- SonarQube integration
+- Chat moderators can add and remove users
+- Messages are sorted by date
+- Site supports hosting on HTTPS if certs and key are present locally
+- Logs get rotated weekly and automatically saved upon rotation
+- Account Admin role affects permissions, including access to Logs, User Management, and Chat Directory
+- Logging support added for deletion of conversations/messages and logging out
+- Brute force login attempts are met with a cooldown
+- Numerous UI tweaks to improve site appearance and cohesiveness
 
 ---
 

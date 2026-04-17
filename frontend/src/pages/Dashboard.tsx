@@ -73,6 +73,7 @@ function MessageBubbleText({
 export default function Messages() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [isSocketReady, setIsSocketReady] = useState<boolean>(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageInput, setMessageInput] = useState("");
   const [loadingConversations, setLoadingConversations] = useState(true);
@@ -97,6 +98,7 @@ export default function Messages() {
   const conversationsSocketRef = useRef<WebSocket | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const activeChat = conversations.find(c => c.id === activeConversationId)
+  const shouldOpenNewChat = useRef(false);
 
   const currentUserIdRef = useRef<number | null>(null);
   const currentUserEmailRef = useRef<string | null>(null);
@@ -175,13 +177,22 @@ export default function Messages() {
           if (existingIndex !== -1) {
             const updated = [...prev];
             const existing = updated.splice(existingIndex, 1)[0];
-            setActiveConversationId(existing.id);
-            currentConversationId.current = existing.id
+            
+            if (shouldOpenNewChat.current) {
+              setActiveConversationId(existing.id);
+              currentConversationId.current = existing.id;
+              shouldOpenNewChat.current = false;
+            }
+
             return [existing, ...updated];
           }
 
-          setActiveConversationId(newConv.id);
-          currentConversationId.current = newConv.id
+          if (shouldOpenNewChat.current) {
+            setActiveConversationId(newConv.id);
+            currentConversationId.current = newConv.id;
+            shouldOpenNewChat.current = false;
+          }
+
           return [newConv, ...prev];
         });
       }
@@ -244,6 +255,12 @@ export default function Messages() {
 
     const ws = new WebSocket(`ws://localhost:8000/ws/conversation/${activeConversationId}/`);
     socketRef.current = ws;
+    setIsSocketReady(false);
+
+    // Update state used for deactivating Send button if socket isn't open
+    ws.onopen = () => setIsSocketReady(true);
+    ws.onclose = () => setIsSocketReady(false);
+    ws.onerror = () => setIsSocketReady(false);
 
     ws.onmessage = async (e) => {
       const data = JSON.parse(e.data);
@@ -280,6 +297,7 @@ export default function Messages() {
     // Cleanup on unmount
     return () => {
       if (ws.readyState === 1) ws.close();
+      setIsSocketReady(false);
     };
   }, [activeConversationId, currentUserEmail]);
 
@@ -382,10 +400,10 @@ export default function Messages() {
     }));
   };
 
-  const handleUpdateExpiration = () => {
-    // Logic goes here for the expriation date
-    setIsSettingsDropdownOpen(false);
-  };
+  // const handleUpdateExpiration = () => {
+  //   // Logic goes here for the expriation date
+  //   setIsSettingsDropdownOpen(false);
+  // };
 
 
 
@@ -517,10 +535,12 @@ export default function Messages() {
     );
   };
 
-  //Logic for cerating the chat when the button is pressed
+  //Logic for creating the chat when the button is pressed
   const handleCreateChat = () => {
     if (!selectedUsers.length || !conversationsSocketRef.current) return;
 
+    shouldOpenNewChat.current = true; // Auto-open new conversation just for sender
+    
     conversationsSocketRef.current.send(JSON.stringify({
       action: "create_group",
       name: newConversationName, // optional
@@ -541,7 +561,7 @@ export default function Messages() {
     }}>
       {/* Sidebar */}
       <div style={{ width: "250px", borderRight: "1px solid #ddd", background: "#f0f0f0", display: "flex", flexDirection: "column", overflowY: "auto" }}>
-        <h3 style={{ padding: "15px" }}>Chats</h3>
+        <h3 style={{ padding: "5px" }}>Chats</h3>
         <button
           onClick={() => setIsModalOpen(true)}
           style={{ ...btnStyle, backgroundColor: "#075E54", margin: "10px" }}
@@ -632,12 +652,12 @@ export default function Messages() {
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         <div
           style={{
-            padding: "15px",
             borderBottom: "1px solid #ddd",
             background: "#eee",
             display: "flex",
             alignItems: "center",
-            position: "relative"
+            position: "relative",
+            minHeight: "70px",
           }}
         >
           {/* CENTERED CONTENT */}
@@ -660,9 +680,20 @@ export default function Messages() {
                 <div style={{ position: "relative" }} ref={settingsRef}>
                   <button
                     onClick={() => setIsSettingsDropdownOpen(!isSettingsDropdownOpen)}
-                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: "16px" }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "24px",
+                      padding: "0px 8px",
+                      lineHeight: "8px",
+                      transform: "translateY(-2px)",
+                    }}
                   >
-                    ⚙️
+                    ⚙
                   </button>
                   {isSettingsDropdownOpen && (
                     <div style={{
@@ -720,7 +751,7 @@ export default function Messages() {
                 border: "none",
                 fontSize: "20px",
                 cursor: "pointer",
-                padding: "5px"
+                padding: "5px",
               }}
             >
               ⋮
@@ -789,7 +820,7 @@ export default function Messages() {
                   width: "100%" // ensures it's centered across chat
                 }}
                   >
-                {new Date(msg.timestamp || "").toLocaleDateString()}
+                {formatDateLabel(new Date(msg.timestamp || "").toLocaleDateString())}
               </div>
                 )}
               <div
@@ -806,7 +837,7 @@ export default function Messages() {
               >
                 {/* Name ABOVE the bubble */}
                 {!msg.is_me && (
-                  <div style={{ fontWeight: "bold", fontSize: "12px", marginBottom: "3px" }}>
+                  <div style={{ fontWeight: "bold", fontSize: "12px", marginBottom: "3px", textAlign: "left" }}>
                     {msg.sender}
                   </div>
                 )}
@@ -821,7 +852,9 @@ export default function Messages() {
                     paddingLeft: hoveredMessageId === msg.id && !msg.is_me && activeChat?.moderator === currentUserId && activeChat?.is_group ? "32px" : "12px",
                     transition: "padding 0.15s ease",
                     borderRadius: "8px",
-                    position: "relative"
+                    position: "relative",
+                    display: "inline-block",
+                    width: "fit-content"
                   }}
                 >
 
@@ -874,8 +907,15 @@ export default function Messages() {
             onKeyDown={e => { if (e.key === "Enter") handleSendMessage(); }}
           />
           <button
+            disabled={!isSocketReady}
             onClick={handleSendMessage}
-            style={{ padding: "10px 15px", borderRadius: "50%", background: "#075E54", color: "white" }}
+            style={{
+              padding: "10px 15px",
+              borderRadius: "50%",
+              backgroundColor: isSocketReady ? "#075E54" : "#F0F0F0",
+              color: "white",
+              cursor: isSocketReady ? "pointer" : "not-allowed",
+            }}
           >
             ➤
           </button>
@@ -896,7 +936,7 @@ export default function Messages() {
               <option value="30">30 Days</option>
             </select>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
-              <button onClick={() => setActiveModal(null)} style={{ padding: "8px", background: "#ddd", border: "none", cursor: "pointer" }}>Cancel</button>
+              <button onClick={() => setActiveModal(null)} style={{ padding: "8px", background: "#ddd", border: "none", cursor: "pointer", borderRadius: "4px" }}>Cancel</button>
               <button onClick={() => setActiveModal(null)} style={{ padding: "8px", background: "#075E54", color: "white", border: "none", cursor: "pointer", borderRadius: "4px" }}>Save Settings</button>
             </div>
           </div>
@@ -930,6 +970,7 @@ export default function Messages() {
                 }}>
                   {users
                     .filter(u => !activeChat.participants.some(p => p.username === u.username))
+                    .filter(u => u.id !== currentUserId)
                     .map((user) => (
                       <div
                         key={user.id}
@@ -990,7 +1031,7 @@ export default function Messages() {
             width: "300px", boxShadow: "0 2px 10px rgba(0,0,0,0.1)"
           }}>
             <h3>New Chat</h3>
-            <div style={{ position: "relative", width: "90%" }}>
+            <div style={{ position: "relative", display: "flex", flexWrap: "wrap" }}>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "5px", marginBottom: "10px" }}>
                 {selectedUsers.map((username) => (
                   <div
@@ -1038,34 +1079,36 @@ export default function Messages() {
                     zIndex: 1001,
                   }}
                 >
-                  {users.map((user) => (
-                    <div
-                      key={user.id}
-                      onClick={() => {
-                        toggleUser(user.username);
-                        setSearchQuery(""); // clear after select
-                      }}
-                      style={{
-                        padding: "8px",
-                        cursor: "pointer",
-                        background: selectedUsers.includes(user.username)
-                          ? "#ddd"
-                          : "white",
-                      }}
-                    >
-                      {user.username}
-                    </div>
+                  {users
+                    .filter(u => u.id !== currentUserId)
+                    .map((user) => (
+                      <div
+                        key={user.id}
+                        onClick={() => {
+                          toggleUser(user.username);
+                          setSearchQuery(""); // clear after select
+                        }}
+                        style={{
+                          padding: "8px",
+                          cursor: "pointer",
+                          background: selectedUsers.includes(user.username)
+                            ? "#ddd"
+                            : "white",
+                        }}
+                      >
+                        {user.username}
+                      </div>
                   ))}
                 </div>
               )}
             </div>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
               <button onClick={() => {
                 setIsModalOpen(false);
                 setSelectedUsers([]);
                 setConversationName("");
-              }} style={{ padding: "8px", color: "#000000", background: "#ddd" }}>Cancel</button>
+              }} style={{ padding: "8px", color: "#000000", background: "#ddd", borderRadius: "4px" }}>Cancel</button>
               <button onClick={handleCreateChat} style={{ padding: "8px", background: "#075E54", color: "white", borderRadius: "4px" }}>Create</button>
             </div>
           </div>

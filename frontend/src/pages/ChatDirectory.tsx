@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import DataTable, { filterStyle, btnStyle, deleteButtonStyle, bodyStyle } from '../components/DataTable';
 
 export default function ChatDirectory() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -59,7 +60,7 @@ export default function ChatDirectory() {
           <span style={{ marginRight: "5px" }}>←</span>
         </button>
 
-        <h2 style={{ margin: "0 0 15px 0" }}>User Management</h2>
+        <h2 style={{ margin: "0 0 15px 0" }}>Chat Directory</h2>
         
         {/* Line 1: Search Bar */}
         <div style={{ marginBottom: "12px" }}>
@@ -94,95 +95,24 @@ export default function ChatDirectory() {
       </div>
 
       {/* --- Table Section --- */}
-      <div style={{ 
-        flex: 1, 
-        backgroundColor: "white", 
-        borderRadius: "8px", 
-        border: "1px solid #ddd", 
-        overflow: "hidden", // Important for contained scrolling
-        display: "flex",
-        flexDirection: "column"
-      }}>
-        {/* Table Header (Fixed) */}
-        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-          <thead>
-            <tr style={{ backgroundColor: "#eee", textAlign: "left" }}>
-              <th style={headerStyle}>Chat Name</th>
-              <th style={headerStyle}>Participants</th>
-              <th style={headerStyle}>Date Created</th>
-              <th style={headerStyle}>Last Date Used</th>
-              <th style={{ ...headerStyle, textAlign: "center" }}>Actions</th>
-            </tr>
-          </thead>
-        </table>
-
-        {/* Table Body (Scrollable) */}
-        <div style={{ flex: 1, overflowY: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-            <tbody>
-              {filteredUsers.map(user => (
-                <tr key={user.id} style={{ borderBottom: "1px solid #eee" }}>
-                  <td style={bodyStyle}>{user.chatName}</td>
-                  <td style={bodyStyle}>{user.participants}</td>
-                  <td style={bodyStyle}>{user.dateCreated}</td>
-                  <td style={bodyStyle}>{user.lastDateUsed}</td>
-                  <td style={{ ...bodyStyle, textAlign: "center" }}>
-                    <button 
-                      onClick={() => handleDelete(user.id)}
-                      style={deleteButtonStyle}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable headers={["Chat Name", "Participants", "Date Created", "Last Date Used", "Actions"]}>
+        {filteredUsers.map(user => (
+          <tr key={user.id} style={{ borderBottom: "1px solid #eee" }}>
+            <td style={bodyStyle}>{user.chatName}</td>
+            <td style={bodyStyle}>{user.participants}</td>
+            <td style={bodyStyle}>{user.dateCreated}</td>
+            <td style={bodyStyle}>{user.lastDateUsed}</td>
+            <td style={{ ...bodyStyle, textAlign: "center" }}>
+              <button 
+                onClick={() => handleDelete(user.id)}
+                style={deleteButtonStyle}
+              >
+                Delete
+              </button>
+            </td>
+          </tr>
+        ))}
+      </DataTable>
     </div>
   );
 }
-
-/* Reusable Styles for different components*/
-const filterStyle: React.CSSProperties = {
-  padding: "10px",
-  borderRadius: "6px",
-  border: "1px solid #ccc",
-  minWidth: "150px",
-  backgroundColor: "white"
-};
-
-const btnStyle: React.CSSProperties = {
-  padding: "10px 20px",
-  borderRadius: "6px",
-  border: "none",
-  color: "white",
-  cursor: "pointer",
-  fontWeight: "bold"
-};
-
-const deleteButtonStyle: React.CSSProperties = {
-  padding: "6px 12px",
-  backgroundColor: "#fff",
-  border: "1px solid #dc3545",
-  color: "#dc3545",
-  borderRadius: "4px",
-  cursor: "pointer",
-  fontSize: "0.85rem",
-  fontWeight: "500",
-  transition: "all 0.2s ease"
-};
-
-const headerStyle: React.CSSProperties = {
-  padding: "15px",
-  fontWeight: "bold",
-  borderBottom: "2px solid #ddd"
-};
-
-const bodyStyle: React.CSSProperties = {
-  padding: "15px",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap"
-};

@@ -9,7 +9,7 @@ export default function ProtectedRoutes() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch("/api/me/", {
+        const res = await fetch("/api/verify-staff/", {
           credentials: "include",
         });
 

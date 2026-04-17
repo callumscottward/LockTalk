@@ -28,7 +28,7 @@ function App() {
   useEffect(() => {
     // Replace with your actual auth-check endpoint 
     // This should return the user object with 'is_staff' from your serializer
-    fetch("http://localhost:8000/api/verify-staff/", {
+    fetch("/api/verify-staff/", {
       credentials: "include"
     }) 
       .then((res) => {

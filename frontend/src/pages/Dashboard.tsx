@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect, useRef } from 'react';
 
 interface Conversation {
@@ -168,33 +169,24 @@ export default function Messages() {
         setConversations(prev => {
           const newConv = data.conversation;
 
-          const existingIndex = prev.findIndex(conv => {
-            if (conv.participants.length !== newConv.participants.length) return false;
-
-            const set = new Set(conv.participants.map(p => p.username));
-            return newConv.participants.every((p: { username: string }) => set.has(p.username));
-          });
-
-          if (existingIndex !== -1) {
-            const updated = [...prev];
-            const existing = updated.splice(existingIndex, 1)[0];
-            
-            if (shouldOpenNewChat.current) {
-              setActiveConversationId(existing.id);
-              currentConversationId.current = existing.id;
-              shouldOpenNewChat.current = false;
-            }
-
-            return [existing, ...updated];
+          // If it's an existing direct conversation → just switch to it
+          if (data.already_exists) {
+            setActiveConversationId(newConv.id);
+            currentConversationId.current = newConv.id;
+            shouldOpenNewChat.current = false;
+            return prev; // don't add duplicate
           }
 
+          // If it's actually new → same behavior as before
           if (shouldOpenNewChat.current) {
             setActiveConversationId(newConv.id);
             currentConversationId.current = newConv.id;
             shouldOpenNewChat.current = false;
           }
 
-          return [newConv, ...prev];
+          return prev.some(c => c.id === newConv.id)
+            ? prev
+            : [newConv, ...prev];
         });
       }
 
@@ -447,8 +439,8 @@ export default function Messages() {
     if (isToday) return "Today";
     if (isYesterday) return "Yesterday";
 
-  return date.toLocaleDateString();
-};
+    return date.toLocaleDateString();
+  };
 
   // Fetch existing messages whenever a conversation is selected
   useEffect(() => {
@@ -542,7 +534,7 @@ export default function Messages() {
     if (!selectedUsers.length || !conversationsSocketRef.current) return;
 
     shouldOpenNewChat.current = true; // Auto-open new conversation just for sender
-    
+
     conversationsSocketRef.current.send(JSON.stringify({
       action: "create_group",
       name: newConversationName, // optional
@@ -809,93 +801,93 @@ export default function Messages() {
 
               const showDateDivider = currentDate !== prevDate;
 
-        return (
-            <>
-              {/* DATE DIVIDER */}
-              {showDateDivider && (
-              <div
-                style={{
-                  textAlign: "center",
-                  margin: "10px 0",
-                  color: "#888",
-                  fontSize: "12px",
-                  width: "100%" // ensures it's centered across chat
-                }}
+              return (
+                <React.Fragment key={msg.id}>
+                  {/* DATE DIVIDER */}
+                  {showDateDivider && (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        margin: "10px 0",
+                        color: "#888",
+                        fontSize: "12px",
+                        width: "100%" // ensures it's centered across chat
+                      }}
+                    >
+                      {formatDateLabel(new Date(msg.timestamp || "").toLocaleDateString())}
+                    </div>
+                  )}
+                  <div
+                    key={msg.id}
+                    // Logic for hovering
+                    onMouseEnter={() => setHoveredMessageId(msg.id)}
+                    onMouseLeave={() => setHoveredMessageId(null)}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignSelf: msg.is_me ? "flex-end" : "flex-start",
+                      maxWidth: "70%",
+                    }}
                   >
-                {formatDateLabel(new Date(msg.timestamp || "").toLocaleDateString())}
-              </div>
-                )}
-              <div
-                key={msg.id}
-                // Logic for hovering
-                onMouseEnter={() => setHoveredMessageId(msg.id)}
-                onMouseLeave={() => setHoveredMessageId(null)}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignSelf: msg.is_me ? "flex-end" : "flex-start",
-                  maxWidth: "70%",
-                }}
-              >
-                {/* Name ABOVE the bubble */}
-                {!msg.is_me && (
-                  <div style={{ fontWeight: "bold", fontSize: "12px", marginBottom: "3px", textAlign: "left" }}>
-                    {msg.sender}
-                  </div>
-                )}
-
-                {/* Message bubble */}
-                <div
-                  style={{
-                    background: msg.is_me ? "#075E54" : "#d0d0d0ff",
-                    color: msg.is_me ? "#fff" : "#000",
-                    padding: "8px 12px",
-                    paddingRight: hoveredMessageId === msg.id && msg.is_me ? "32px" : "12px",
-                    paddingLeft: hoveredMessageId === msg.id && !msg.is_me && activeChat?.moderator === currentUserId && activeChat?.is_group ? "32px" : "12px",
-                    transition: "padding 0.15s ease",
-                    borderRadius: "8px",
-                    position: "relative",
-                    display: "inline-block",
-                    width: "fit-content"
-                  }}
-                >
-
-                  {/* Function to decrypt and display text to avoid storing plaintext */}
-                  <MessageBubbleText msg={msg} decryptMessage={decryptMessage} />
-
-                  <div style={{ fontSize: "10px", opacity: 0.7 }}>
-                    {new Date(msg.timestamp || "").toLocaleTimeString()}
-                  </div>
-
-                  {/* Delete Button */}
-                  {hoveredMessageId === msg.id &&
-                    (
-                      msg.is_me ||
-                      (activeChat?.is_group && activeChat?.moderator === currentUserId)
-                    ) && (
-                      <button
-                        onClick={() => handleDeleteMessage(msg.id)}
-                        style={{
-                          position: "absolute",
-                          top: "5px",
-                          right: msg.is_me ? "-5px" : "auto",
-                          left: !msg.is_me ? "-5px" : "auto",
-                          background: "none",
-                          border: "none",
-                          color: "#ff4d4d",
-                          cursor: "pointer",
-                          fontSize: "14px",
-                          fontWeight: "bold"
-                        }}
-                      >
-                        ✕
-                      </button>
+                    {/* Name ABOVE the bubble */}
+                    {!msg.is_me && (
+                      <div style={{ fontWeight: "bold", fontSize: "12px", marginBottom: "3px", textAlign: "left" }}>
+                        {msg.sender}
+                      </div>
                     )}
-                </div>
-              </div>
-              </>
-            );
-          })
+
+                    {/* Message bubble */}
+                    <div
+                      style={{
+                        background: msg.is_me ? "#075E54" : "#d0d0d0ff",
+                        color: msg.is_me ? "#fff" : "#000",
+                        padding: "8px 12px",
+                        paddingRight: hoveredMessageId === msg.id && msg.is_me ? "32px" : "12px",
+                        paddingLeft: hoveredMessageId === msg.id && !msg.is_me && activeChat?.moderator === currentUserId && activeChat?.is_group ? "32px" : "12px",
+                        transition: "padding 0.15s ease",
+                        borderRadius: "8px",
+                        position: "relative",
+                        display: "inline-block",
+                        width: "fit-content"
+                      }}
+                    >
+
+                      {/* Function to decrypt and display text to avoid storing plaintext */}
+                      <MessageBubbleText msg={msg} decryptMessage={decryptMessage} />
+
+                      <div style={{ fontSize: "10px", opacity: 0.7 }}>
+                        {new Date(msg.timestamp || "").toLocaleTimeString()}
+                      </div>
+
+                      {/* Delete Button */}
+                      {hoveredMessageId === msg.id &&
+                        (
+                          msg.is_me ||
+                          (activeChat?.is_group && activeChat?.moderator === currentUserId)
+                        ) && (
+                          <button
+                            onClick={() => handleDeleteMessage(msg.id)}
+                            style={{
+                              position: "absolute",
+                              top: "5px",
+                              right: msg.is_me ? "-5px" : "auto",
+                              left: !msg.is_me ? "-5px" : "auto",
+                              background: "none",
+                              border: "none",
+                              color: "#ff4d4d",
+                              cursor: "pointer",
+                              fontSize: "14px",
+                              fontWeight: "bold"
+                            }}
+                          >
+                            ✕
+                          </button>
+                        )}
+                    </div>
+                  </div>
+                </React.Fragment>
+              );
+            })
           )}
         </div>
 
@@ -1100,7 +1092,7 @@ export default function Messages() {
                       >
                         {user.username}
                       </div>
-                  ))}
+                    ))}
                 </div>
               )}
             </div>

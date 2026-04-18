@@ -195,58 +195,69 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
         usernames = content.get("participants", [])
         time = timezone.now()
 
-        # Fetch participants
+        # Get participants + include current user
         participants = await database_sync_to_async(
             lambda: list(User.objects.filter(username__in=usernames))
         )()
-        participants.append(user)  # Add creator
-        selected_user_ids = [u.id for u in participants]
-        participants_ids_set = set(selected_user_ids)
+        participants.append(user)
 
-        # Fetch existing conversations with any of these users
-        existing = await database_sync_to_async(
-            lambda: list(
-                Conversation.objects.annotate(num_participants=Count('participants'))
-                .filter(participants__in=participants)
-                .distinct()
-            )
-        )()
+        participant_ids = set(u.id for u in participants)
+        is_group = len(participants) >= 3
 
-        # Check for exact participant match
         conversation = None
-        for conv in existing:
-            conv_participants_ids = set(await database_sync_to_async(
-                lambda: list(conv.participants.values_list('id', flat=True))
-            )())
-            if conv_participants_ids == participants_ids_set:
-                conversation = conv
-                break
+        created_new = False
 
-        # Create new conversation if none exists
+        # --- Check for existing direct chat ---
+        if not is_group:
+            all_convos = await database_sync_to_async(
+                lambda: list(
+                    Conversation.objects.filter(is_group=False)
+                    .prefetch_related("participants")
+                )
+            )()
+
+            for conv in all_convos:
+                ids = set(await database_sync_to_async(
+                    lambda c=conv: list(c.participants.values_list("id", flat=True))
+                )())
+
+                if ids == participant_ids:
+                    conversation = conv
+                    break
+
+        # --- Create if not found ---
         if not conversation:
+            created_new = True 
+
             conversation = await database_sync_to_async(
                 lambda: Conversation.objects.create(
                     name=name,
                     moderator=user,
+                    is_group=is_group,
                     latestUpdate=time
                 )
             )()
-            await database_sync_to_async(lambda: conversation.participants.add(*selected_user_ids))()
 
-        # Mark as group if 3+ participants
-        if len(participants) >= 3:
-            await database_sync_to_async(lambda: setattr(conversation, "is_group", True))()
-            await database_sync_to_async(lambda: conversation.save(update_fields=["is_group"]))()
+            await database_sync_to_async(
+                lambda: conversation.participants.add(*participant_ids)
+            )()
 
-        # Broadcast to participants        
         serialized = await database_sync_to_async(
-            lambda: ConversationSerializer(conversation, context={"request": self.scope}).data
+            lambda: ConversationSerializer(
+                conversation,
+                context={"request": self.scope}
+            ).data
         )()
-        
+
+        # Broadcast to all participants
         for participant in participants:
             await self.channel_layer.group_send(
                 f"user_{participant.id}",
-                {"type": "new_conversation", "conversation": serialized}
+                {
+                    "type": "new_conversation",
+                    "conversation": serialized,
+                    "already_exists": not created_new
+                }
             )
 
     async def conversation_created(self, event):

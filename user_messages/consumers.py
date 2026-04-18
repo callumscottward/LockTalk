@@ -179,8 +179,8 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
     async def receive_json(self, content):
         action = content.get("action")
 
-        if action == "create_group":
-            await self.create_group(content)
+        if action == "create_conversation":
+            await self.create_conversation(content)
         elif action == "delete_conversation":
             await self.delete_conversation(content)
         elif action == "add_member":
@@ -189,7 +189,7 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
             await self.remove_member(content)
         
 
-    async def create_group(self, content):
+    async def create_conversation(self, content):
         user = self.scope["user"]
         name = content.get("name", "")
         usernames = content.get("participants", [])
@@ -232,7 +232,7 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
             conversation = await database_sync_to_async(
                 lambda: Conversation.objects.create(
                     name=name,
-                    moderator=user,
+                    moderator= user if is_group else None,
                     is_group=is_group,
                     latestUpdate=time
                 )

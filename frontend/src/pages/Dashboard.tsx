@@ -536,7 +536,7 @@ export default function Messages() {
     shouldOpenNewChat.current = true; // Auto-open new conversation just for sender
 
     conversationsSocketRef.current.send(JSON.stringify({
-      action: "create_group",
+      action: "create_conversation",
       name: newConversationName, // optional
       participants: selectedUsers,
     }));

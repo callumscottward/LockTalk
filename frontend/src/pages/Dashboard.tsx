@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { encryptMessage, decryptMessage, receiveKemHandshake, createKemHandshake, sessionKeys } from '../utilities/MessageCryptography';
 
 interface Conversation {
   id: string;
@@ -39,35 +40,6 @@ function getCookie(name: string) {
     }
   }
   return cookieValue;
-}
-
-function MessageBubbleText({
-  msg,
-  decryptMessage,
-}: Readonly<{
-  msg: Message;
-  decryptMessage: (m: Message["encrypted_content"]) => Promise<string>;
-}>) {
-  const [decrypted, setDecrypted] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const run = async () => {
-      const text = await decryptMessage(msg.encrypted_content);
-      if (!cancelled) setDecrypted(text);
-    };
-
-    run();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [msg.encrypted_content]);
-
-  return (
-    <div>{decrypted}</div>
-  );
 }
 
 export default function Messages() {
@@ -266,6 +238,15 @@ export default function Messages() {
 
     ws.onmessage = async (e) => {
       const data = JSON.parse(e.data);
+      if (data.type === "kem_handshake") {
+        await receiveKemHandshake(
+          data.conversationId,
+          data.kemAlgorithm,
+          data.kemCiphertext
+        );
+        return;
+      }
+      
       if (data.type === "chat_message") {
         setMessages(prev => [
           ...prev,
@@ -303,59 +284,61 @@ export default function Messages() {
     };
   }, [activeConversationId, currentUserEmail]);
 
-  // Get the key message encryption will use (hardcoded for now)
-  const getKey = async () => {
-    const enc = new TextEncoder();
-    return crypto.subtle.importKey(
-      "raw",
-      enc.encode("temporary_test_key_1234567891011"),
-      { name: "AES-GCM" },
-      false,
-      ["encrypt", "decrypt"]
+  function MessageBubbleText({
+    msg,
+    decryptMessage,
+  }: Readonly<{
+    msg: Message;
+    decryptMessage: Function;
+  }>) {
+    if (!activeConversationId)
+      return null;
+
+    const [decrypted, setDecrypted] = useState("");
+
+    useEffect(() => {
+      let cancelled = false;
+
+      const run = async () => {
+        const text = await decryptMessage(activeConversationId, msg.encrypted_content);
+        if (!cancelled) setDecrypted(text);
+      };
+
+      run();
+
+      return () => {
+        cancelled = true;
+      };
+    }, [msg.encrypted_content]);
+
+    return (
+      <div>{decrypted}</div>
     );
-  };
-
-  // Encrypt messages before sending them
-  const encryptMessage = async (message: string) => {
-    const key = await getKey();
-    const enc = new TextEncoder();
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-
-    const ciphertext = await crypto.subtle.encrypt(
-      { name: "AES-GCM", iv },
-      key,
-      enc.encode(message)
-    );
-
-    return {
-      iv: Array.from(iv),
-      data: Array.from(new Uint8Array(ciphertext)),
-    };
-  };
-
-  // Decrypt received messages to be displayed in plaintext
-  const decryptMessage = async (message: { iv: Array<number>, data: Array<number> }) => {
-    const key = await getKey();
-    const decoder = new TextDecoder();
-
-    const { iv, data } = message;
-
-    const decrypted = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: new Uint8Array(iv) },
-      key,
-      new Uint8Array(data)
-    );
-
-    return decoder.decode(decrypted);
-  };
+  }
 
   // Send message via WebSocket
   const handleSendMessage = async () => {
-    if (!messageInput.trim() || !socketRef.current) return;
+    if (!messageInput.trim() || !socketRef.current || !activeConversationId) return;
+    
+    // Initialize encryption key with ML-KEM if not yet established
+    if (!sessionKeys.has(activeConversationId)) {
+      const handshake = await createKemHandshake(activeConversationId, recipientPublicKey);
 
-    const encryptedMessage = await encryptMessage(messageInput);
+      socketRef.current.send(JSON.stringify({
+        type: "kem_handshake",
+        conversationId: activeConversationId,
+        kemCiphertext: handshake.kemCiphertext,
+      }));
+    }
 
-    socketRef.current.send(JSON.stringify({ message: encryptedMessage }));
+    const encryptedMessage = await encryptMessage(activeConversationId, messageInput);
+
+    socketRef.current.send(JSON.stringify({
+      type: "chat_message",
+      conversationId: activeConversationId,
+      content: encryptedMessage,
+    }));
+    
     setMessageInput("");
   };
 
@@ -403,11 +386,9 @@ export default function Messages() {
   };
 
   // const handleUpdateExpiration = () => {
-  //   // Logic goes here for the expriation date
+  //   // Logic goes here for the expiration date
   //   setIsSettingsDropdownOpen(false);
   // };
-
-
 
   const handleLogout = async () => {
     try {
@@ -447,8 +428,8 @@ export default function Messages() {
     if (isToday) return "Today";
     if (isYesterday) return "Yesterday";
 
-  return date.toLocaleDateString();
-};
+    return date.toLocaleDateString();
+  };
 
   // Fetch existing messages whenever a conversation is selected
   useEffect(() => {

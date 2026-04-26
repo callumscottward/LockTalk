@@ -117,6 +117,26 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 }
             )
             
+            participants = await database_sync_to_async(
+                lambda: list(self.conversation.participants.all())
+            )()
+            
+            serialized = await database_sync_to_async(
+                lambda: ConversationSerializer(
+                    self.conversation,
+                    context={"user": self.user}
+                ).data
+            )()
+
+            for p in participants:
+                await self.channel_layer.group_send(
+                    f"user_{p.id}",
+                    {
+                        "type": "conversation_updated",
+                        "conversation": serialized
+                    }
+                )
+            
             await create_msg_logs(self.conversation, self.user)
 
             await database_sync_to_async(

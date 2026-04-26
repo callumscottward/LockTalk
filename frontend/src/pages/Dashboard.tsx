@@ -229,7 +229,10 @@ export default function Messages() {
 
           return wasRemoved
             ? prev.filter(c => c.id !== updated.id)
-            : prev.map(c => c.id === updated.id ? updated : c);
+            : [
+              updated,
+              ...prev.filter(c => c.id !== updated.id)
+            ];
         });
       }
     };

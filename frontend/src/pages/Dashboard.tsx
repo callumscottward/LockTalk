@@ -366,9 +366,6 @@ export default function Messages() {
   const handleDeleteConversation = (convId: string) => {
     if (!window.confirm("Delete this entire conversation?")) return;
 
-    console.log(convId)
-    console.log(activeConversationId)
-
     conversationsSocketRef.current?.send(JSON.stringify({
       action: "delete_conversation",
       conversation_id: convId

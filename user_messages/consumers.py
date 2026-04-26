@@ -356,14 +356,8 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
     async def remove_member(self, content):
         User = get_user_model()
 
-        print(User)
-        print(content)
-
         user_id = content.get("userId")
         conv_id = content.get("conversation_id")
-        
-        print(user_id)
-        print(conv_id)
 
         if not user_id or not conv_id:
             return

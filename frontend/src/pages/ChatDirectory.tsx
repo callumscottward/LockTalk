@@ -122,7 +122,6 @@ export default function ChatDirectory() {
         </button>
 
         <h2 style={{ margin: "0 0 15px 0" }}>Chat Directory</h2>
-        <h2 style={{ margin: "0 0 15px 0" }}>Chat Directory</h2>
         
         {/* Line 1: Search Bar */}
         <div style={{ marginBottom: "12px" }}>

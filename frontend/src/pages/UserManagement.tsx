@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-
 /**
  * @name UserManagement
  * ## UserManagement Component
@@ -92,7 +91,9 @@ export default function UserManagement() {
               padding: "12px", 
               borderRadius: "6px", 
               border: "1px solid #ccc",
-              fontSize: "1rem"
+              fontSize: "1rem",
+              boxSizing: "border-box",
+
             }}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}

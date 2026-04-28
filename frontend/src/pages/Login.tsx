@@ -38,7 +38,7 @@ function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const response = await fetch("http://localhost:8000/api/login/", {
+    const response = await fetch("/api/login/", {
       method: "POST", // unsafe method triggers CSRF check
       headers: {
         "Content-Type": "application/json",

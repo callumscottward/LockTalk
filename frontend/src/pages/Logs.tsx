@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import DataTable, { filterStyle, btnStyle, bodyStyle } from '../components/DataTable';
 
 /**
  * @name Logs
@@ -27,7 +28,7 @@ export default function Logs() {
   useEffect(() => {
     async function fetchLogs() {
       try {
-        const response = await fetch("http://localhost:8000/api/logs/", {
+        const response = await fetch("/api/logs/", {
           credentials: "include", // include session cookies if needed
         });
         if (!response.ok) throw new Error("Failed to fetch logs");
@@ -58,7 +59,7 @@ export default function Logs() {
       display: "flex", 
       flexDirection: "column", 
       height: "100vh", 
-      width: "100%", 
+      width: "100vw", 
       overflow: "hidden", 
       backgroundColor: "#f8f9fa",
       padding: "20px",
@@ -86,7 +87,7 @@ export default function Logs() {
           <span style={{ marginRight: "5px" }}>←</span>
         </button>
 
-        <h2 style={{ margin: "0 0 15px 0" }}>User Management</h2>
+        <h2 style={{ margin: "0 0 15px 0" }}>Logs</h2>
         
         {/* Search Bar */}
         <div style={{ marginBottom: "12px" }}>
@@ -98,7 +99,8 @@ export default function Logs() {
               padding: "12px", 
               borderRadius: "6px", 
               border: "1px solid #ccc",
-              fontSize: "1rem"
+              fontSize: "1rem",
+              boxSizing: "border-box"
             }}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -128,76 +130,17 @@ export default function Logs() {
       </div>
 
       {/* Table */}
-      <div style={{ 
-        flex: 1, 
-        backgroundColor: "white", 
-        borderRadius: "8px", 
-        border: "1px solid #ddd", 
-        overflow: "hidden", 
-        display: "flex",
-        flexDirection: "column"
-      }}>
-        {/* Table Header */}
-        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-          <thead>
-            <tr style={{ backgroundColor: "#eee", textAlign: "left" }}>
-              <th style={headerStyle}>Event Type</th>
-              <th style={headerStyle}>To</th>
-              <th style={headerStyle}>From</th>
-              <th style={headerStyle}>Date/Time</th>
-              <th style={headerStyle}>Status</th>
-            </tr>
-          </thead>
-        </table>
-
-        {/* Table Body (Scrollable) */}
-        <div style={{ flex: 1, overflowY: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-            <tbody>
-              {filteredLogs.map((log) => (
-                <tr key={log.id} style={{ borderBottom: "1px solid #eee" }}>
-                  <td style={bodyStyle}>{log.event_type}</td>
-                  <td style={bodyStyle}>{log.receiver}</td>
-                  <td style={bodyStyle}>{log.sender}</td>
-                  <td style={bodyStyle}>{new Date(log.timestamp).toLocaleString()}</td>
-                  <td style={bodyStyle}>{log.success ? "Success" : "Fail"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable headers={["Event Type", "To", "From", "Date/Time", "Status"]}>
+        {filteredLogs.map((log) => (
+          <tr key={log.id} style={{ borderBottom: "1px solid #eee" }}>
+            <td style={bodyStyle}>{log.event_type}</td>
+            <td style={bodyStyle}>{log.receiver}</td>
+            <td style={bodyStyle}>{log.sender}</td>
+            <td style={bodyStyle}>{new Date(log.timestamp).toLocaleString()}</td>
+            <td style={bodyStyle}>{log.success ? "Success" : "Fail"}</td>
+          </tr>
+        ))}
+      </DataTable>
     </div>
   );
 }
-
-// Reusable Styles for different components.
-const filterStyle: React.CSSProperties = {
-  padding: "10px",
-  borderRadius: "6px",
-  border: "1px solid #ccc",
-  minWidth: "150px",
-  backgroundColor: "white"
-};
-
-const btnStyle: React.CSSProperties = {
-  padding: "10px 20px",
-  borderRadius: "6px",
-  border: "none",
-  color: "white",
-  cursor: "pointer",
-  fontWeight: "bold"
-};
-
-const headerStyle: React.CSSProperties = {
-  padding: "15px",
-  fontWeight: "bold",
-  borderBottom: "2px solid #ddd"
-};
-
-const bodyStyle: React.CSSProperties = {
-  padding: "15px",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap"
-};

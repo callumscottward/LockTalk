@@ -26,7 +26,7 @@ export default function UserProfile() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/verify-staff/", {
+        const res = await fetch("/api/verify-staff/", {
           headers: authHeaders,
           credentials: "include"
         });
@@ -112,7 +112,7 @@ export default function UserProfile() {
             // onclick here, would have the call to do something
             style={{ 
               background: '#075E54', 
-              color: 'black', 
+              color: 'white', 
               border: 'none', 
               padding: '12px 24px', 
               borderRadius: '8px', 

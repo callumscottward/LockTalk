@@ -1,31 +1,92 @@
-import { useState } from 'react';
-import DataTable, { filterStyle, btnStyle, deleteButtonStyle, bodyStyle } from '../components/DataTable';
+import { useState, useEffect, useRef } from 'react';
+
+/**
+ * @name ChatDirectory
+ * ## UserManagement Component
+ * This requires an admin view and shows all of the chats
+ * on the platform. It allows administrators to see conversation
+ * names, participants, the last date the conversation was used, 
+ * and delete conversations.
+ * @category Admin Pages
+ * @returns A full-width management dashboard for various chats with a scrollable user table.
+ */
+
+interface Conversation {
+  id: string;
+  name: string;
+  is_group: boolean;
+  participants: { id: number; username: string }[];
+  time: string; 
+}
 
 export default function ChatDirectory() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [, setLoading] = useState(true);
+  const conversationSocketRef = useRef<WebSocket | null>(null);
 
-  // TEMP DATA. Delete when actual implementation is put in.
-  // Updated to useState so the 'Delete' action can modify the list.
-  const [users, setUsers] = useState(
-    Array.from({ length: 5 }, (_, i) => ({
-      id: i + 1,
-      chatName: `User ${i + 1}`,
-      participants: `Amy, Stacy, Tom`,
-      dateCreated: `4/1/26`,
-      lastDateUsed: "4/2/26",
-      Actions: 'Delete',
-    }))
-  );
+  const authHeaders = {
+    "Content-Type": 'application/json',
+  };
 
-  const handleDelete = (id: number) => {
-    if (window.confirm("Are you sure you want to delete this chat?")) {
-      setUsers(users.filter(user => user.id !== id));
+  useEffect(() => {
+    const fetchAllChats = async () => {
+      try {
+          // Admin to get conversations
+          const res = await fetch("http://localhost:8000/api/admin/all-conversations/", {
+            headers: authHeaders,
+            credentials: "include",
+        });
+        const data: Conversation[] = await res.json();
+        setConversations(data);
+      } 
+      catch (err) {
+        console.error("Failed to load directory:", err);
+      } 
+      finally {
+        setLoading(false);
+      }
+    };
+    fetchAllChats();
+  }, []);
+
+  useEffect(() => {
+    const ws = new WebSocket("ws://localhost:8000/ws/conversations/");
+    conversationSocketRef.current = ws;
+
+    ws.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+
+        if (data.type === "conversation_deleted") {
+          setConversations(prev => prev.filter(c => c.id !== data.conversation_id));
+        }
+      };
+
+      return () => ws.close();
+    }, 
+  []);
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this entire chat for everyone?")) {
+      return;
+    }
+
+    if (conversationSocketRef.current && conversationSocketRef.current.readyState === WebSocket.OPEN) {
+      conversationSocketRef.current.send(JSON.stringify({
+      action: "delete_conversation",
+      conversation_id: id
+    }));
+    } 
+    else {
+      console.error("WebSocket is not connected.");
+      alert("Connection lost. Please refresh the page.");
     }
   };
 
-  const filteredUsers = users.filter(user =>
-    user.chatName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    const filteredChats = conversations.filter(conv =>
+      conv.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      conv.participants.some(p => p.username.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
 
   return (
     <div style={{ 
@@ -95,24 +156,98 @@ export default function ChatDirectory() {
       </div>
 
       {/* --- Table Section --- */}
-      <DataTable headers={["Chat Name", "Participants", "Date Created", "Last Date Used", "Actions"]}>
-        {filteredUsers.map(user => (
-          <tr key={user.id} style={{ borderBottom: "1px solid #eee" }}>
-            <td style={bodyStyle}>{user.chatName}</td>
-            <td style={bodyStyle}>{user.participants}</td>
-            <td style={bodyStyle}>{user.dateCreated}</td>
-            <td style={bodyStyle}>{user.lastDateUsed}</td>
-            <td style={{ ...bodyStyle, textAlign: "center" }}>
-              <button 
-                onClick={() => handleDelete(user.id)}
-                style={deleteButtonStyle}
-              >
-                Delete
-              </button>
-            </td>
-          </tr>
-        ))}
-      </DataTable>
+      <div style={{ 
+        flex: 1, 
+        backgroundColor: "white", 
+        borderRadius: "8px", 
+        border: "1px solid #ddd", 
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column"
+      }}>
+        {/* Table Header (Fixed) */}
+        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+          <thead>
+            <tr style={{ backgroundColor: "#eee", textAlign: "left" }}>
+              <th style={{ ...headerStyle, width: "25%"}}>Chat Name</th>
+              <th style={{ ...headerStyle, width: "30%"}}>Participants</th>
+              <th style={{ ...headerStyle, width: "30%"}}>Last Date Used</th>
+              <th style={{ ...headerStyle, width: "15%"}}>Actions</th>
+            </tr>
+          </thead>
+        </table>
+
+        {/* Table Body (Scrollable) */}
+        <div style={{ flex: 1, overflowY: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+            <tbody>
+              {filteredChats.map(conv => (
+                  <tr key={conv.id} style={{ borderBottom: "1px solid #eee" }}>
+                    <td style={{ ...bodyStyle, width: "25%"}}><strong>{conv.name || "Direct Message"}</strong></td>
+                    <td style={{ ...bodyStyle, width: "30%"}}>
+                      {conv.participants.map(p => p.username).join(", ")}
+                    </td>
+                    <td style={{ ...bodyStyle, width: "30%"}}>
+                      {new Date(conv.time).toLocaleString()}
+                    </td>
+                    <td style={{ ...bodyStyle, width: '15%', textAlign: "center" }}>
+                      <button 
+                        onClick={() => handleDelete(conv.id)}
+                        style={deleteButtonStyle}
+                      >
+                        Delete
+                      </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
+
+/* Reusable Styles for different components*/
+const filterStyle: React.CSSProperties = {
+  padding: "10px",
+  borderRadius: "6px",
+  border: "1px solid #ccc",
+  minWidth: "150px",
+  backgroundColor: "white"
+};
+
+const btnStyle: React.CSSProperties = {
+  padding: "10px 20px",
+  borderRadius: "6px",
+  border: "none",
+  color: "white",
+  cursor: "pointer",
+  fontWeight: "bold"
+};
+
+const deleteButtonStyle: React.CSSProperties = {
+  padding: "6px 12px",
+  backgroundColor: "#fff",
+  border: "1px solid #dc3545",
+  color: "#dc3545",
+  borderRadius: "4px",
+  cursor: "pointer",
+  fontSize: "0.85rem",
+  fontWeight: "500",
+  transition: "all 0.2s ease"
+};
+
+const headerStyle: React.CSSProperties = {
+  padding: "15px",
+  fontWeight: "bold",
+  borderBottom: "2px solid #ddd"
+};
+
+const bodyStyle: React.CSSProperties = {
+  padding: "15px",
+  verticalAlign: "top",
+  wordBreak: "break-word",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};

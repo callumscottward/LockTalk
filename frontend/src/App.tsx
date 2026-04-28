@@ -10,6 +10,18 @@ import ChatDirectory from './pages/ChatDirectory';
 import ProtectedRoutes from './ProtectedRoutes';
 import { useState, useEffect } from 'react';
 
+/**
+ * @name App
+ * ## App Component
+ * This is a central hub that handles user authentication
+ * and routing. It is where admin permissions are stored so 
+ * certain pages are only viewable to admins, as well as some
+ * default navigation. The admin pages are logs, chatDirectory,
+ * and userManagement.
+ * @category Core
+ * @returns The main applications routing and staff permissions.
+ */
+
 // Helpful for the staff stuff
 const StaffRoute = ({ user, loading, children }: { user: any, loading: boolean, children: React.ReactElement }) => {
   if (loading) return <div>Loading...</div>; // Prevent redirect before we know who the user is

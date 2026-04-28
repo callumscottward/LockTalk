@@ -1,18 +1,50 @@
-import { useState } from 'react';
-import DataTable, { filterStyle, btnStyle, bodyStyle } from '../components/DataTable';
+import { useState, useEffect } from 'react';
+/**
+ * @name UserManagement
+ * ## UserManagement Component
+ * This requires an admin view and shows all users registered 
+ * on the platform. It allows administrators to search for users, 
+ * verify account status, and view roles and join dates.
+ * @category Admin Pages
+ * @returns A full-width management dashboard for users with a scrollable user table.
+ */
+
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  is_staff: boolean;
+  is_active: boolean;
+  date_joined: string;
+}
 
 export default function UserManagement() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [users, setUsers] = useState<User[]>([]);
+  const [, setLoading] = useState(true);
 
-  // TEMP DATA. Delete when actual implementation is put in.
-  const users = Array.from({ length: 5 }, (_, i) => ({
-    id: i + 1,
-    name: `User ${i + 1}`,
-    email: `user${i + 1}@example.com`,
-    role: i % 2 === 0 ? "Admin" : "User",
-    status: i % 2 === 0 ? "Active" : "Inactive",
-    joined: "2026-03-21"
-  }));
+  // All the users since it is admin view
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/api/admin/all-users/", {
+          credentials: "include",
+        });
+        const data = await res.json();
+        setUsers(data);
+      } catch (err) {
+        console.error("Failed to load users:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  const filteredUsers = users.filter(u =>
+    u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div style={{ 
@@ -89,27 +121,89 @@ export default function UserManagement() {
       </div>
 
       {/* --- Table Section --- */}
-      <DataTable headers={["Name", "Email", "Role", "Status", "Joined Date"]}>
-        {users.map(user => (
-          <tr key={user.id} style={{ borderBottom: "1px solid #eee" }}>
-            <td style={bodyStyle}>{user.name}</td>
-            <td style={bodyStyle}>{user.email}</td>
-            <td style={bodyStyle}>{user.role}</td>
-            <td style={bodyStyle}>
-              <span style={{ 
-                padding: "4px 8px", 
-                borderRadius: "12px", 
-                fontSize: "0.85rem",
-                backgroundColor: user.status === "Active" ? "#d4edda" : "#f8d7da",
-                color: user.status === "Active" ? "#155724" : "#721c24"
-              }}>
-                {user.status}
-              </span>
-            </td>
-            <td style={bodyStyle}>{user.joined}</td>
-          </tr>
-        ))}
-      </DataTable>
+      <div style={{ 
+        flex: 1, 
+        backgroundColor: "white", 
+        borderRadius: "8px", 
+        border: "1px solid #ddd", 
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column"
+      }}>
+        {/* Table Header (Fixed) */}
+        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+          <thead>
+            <tr style={{ backgroundColor: "#eee", textAlign: "left" }}>
+              <th style={{ ...headerStyle, width: "25%" }}>Name</th>
+              <th style={{ ...headerStyle, width: "25%" }}>Email</th>
+              <th style={{ ...headerStyle, width: "10%" }}>Role</th>
+              <th style={{ ...headerStyle, width: "10%" }}>Status</th>
+              <th style={{ ...headerStyle, width: "30%" }}>Joined Date</th>
+            </tr>
+          </thead>
+        </table>
+
+        {/* Table Body (Scrollable) */}
+        <div style={{ flex: 1, overflowY: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+            <tbody>
+              {filteredUsers.map(user => (
+                <tr key={user.id} style={{ borderBottom: "1px solid #eee" }}>
+                  <td style={{ ...bodyStyle, width: "25%" }}>{user.username}</td>
+                  <td style={{ ...bodyStyle, width: "25%" }}>{user.email}</td>
+                  <td style={{ ...bodyStyle, width: "10%" }}>{user.is_staff ? "Admin" : "User"}</td>
+                  <td style={{ ...bodyStyle, width: "10%" }}>
+                    <span style={{ 
+                      padding: "4px 8px", 
+                      borderRadius: "12px", 
+                      fontSize: "0.85rem",
+                      backgroundColor: user.is_active ? "#d4edda" : "#f8d7da",
+                      color: user.is_active ? "#155724" : "#721c24"
+                    }}>
+                      {user.is_active ? "Active" : "Inactive"}
+                    </span>
+                  </td>
+                    <td style={{ ...bodyStyle, width: "30%"}}>
+                      {new Date(user.date_joined).toLocaleString()}
+                    </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
+
+/* Reusable Styles for different components*/
+const filterStyle: React.CSSProperties = {
+  padding: "10px",
+  borderRadius: "6px",
+  border: "1px solid #ccc",
+  minWidth: "150px",
+  backgroundColor: "white"
+};
+
+const btnStyle: React.CSSProperties = {
+  padding: "10px 20px",
+  borderRadius: "6px",
+  border: "none",
+  color: "white",
+  cursor: "pointer",
+  fontWeight: "bold"
+};
+
+const headerStyle: React.CSSProperties = {
+  padding: "15px",
+  fontWeight: "bold",
+  borderBottom: "2px solid #ddd"
+};
+
+const bodyStyle: React.CSSProperties = {
+  padding: "15px",
+  verticalAlign: "top",
+  wordBreak: "break-word",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};

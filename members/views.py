@@ -50,7 +50,6 @@ class login_api(APIView):
             )
             return Response({
                 "success": True,
-                "message": "Login successful",
                 "user": {
                     "email": user.email,
                     "username": user.username

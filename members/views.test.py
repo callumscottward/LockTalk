@@ -85,7 +85,7 @@ class CurrentUserTests(TestCase):
     def test_current_user(self):
         self.client.login(username="testuser", password="password123")
 
-        response = self.client.get("/api/me/")
+        response = self.client.get("/api/verify-staff/")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["username"], "testuser")

@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect, useRef } from 'react';
 
 interface Conversation {
@@ -22,6 +23,8 @@ interface Message {
 interface User {
   id: number;
   username: string;
+  email: string
+  is_staff: boolean
 }
 
 function getCookie(name: string) {
@@ -71,11 +74,13 @@ function MessageBubbleText({
 export default function Messages() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [isSocketReady, setIsSocketReady] = useState<boolean>(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageInput, setMessageInput] = useState("");
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
   const [currentUserId, setcurrentUserId] = useState<number | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -94,6 +99,7 @@ export default function Messages() {
   const conversationsSocketRef = useRef<WebSocket | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const activeChat = conversations.find(c => c.id === activeConversationId)
+  const shouldOpenNewChat = useRef(false);
 
   const currentUserIdRef = useRef<number | null>(null);
   const currentUserEmailRef = useRef<string | null>(null);
@@ -108,11 +114,12 @@ export default function Messages() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/me/", {
+        const res = await fetch("/api/verify-staff/", {
           headers: authHeaders,
           credentials: "include"
         });
         const data = await res.json();
+        setCurrentUser(data);
         setCurrentUserEmail(data.username);
         setcurrentUserId(data.id)
 
@@ -129,7 +136,7 @@ export default function Messages() {
   useEffect(() => {
     const fetchConversations = async () => {
       try {
-        const res = await fetch("http://localhost:8000/dashboard/", {
+        const res = await fetch("/api/dashboard/", {
           headers: authHeaders,
           credentials: "include",
         });
@@ -151,7 +158,8 @@ export default function Messages() {
 
   // Web Socket Effect that is used when adding a dealing with conversation 
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:8000/ws/conversations/");
+    const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${wsProtocol}://${window.location.host}/ws/conversations/`);
     conversationsSocketRef.current = ws;
 
     ws.onmessage = (e) => {
@@ -161,24 +169,24 @@ export default function Messages() {
         setConversations(prev => {
           const newConv = data.conversation;
 
-          const existingIndex = prev.findIndex(conv => {
-            if (conv.participants.length !== newConv.participants.length) return false;
-
-            const set = new Set(conv.participants.map(p => p.username));
-            return newConv.participants.every((p: { username: string }) => set.has(p.username));
-          });
-
-          if (existingIndex !== -1) {
-            const updated = [...prev];
-            const existing = updated.splice(existingIndex, 1)[0];
-            setActiveConversationId(existing.id);
-            currentConversationId.current = existing.id
-            return [existing, ...updated];
+          // If it's an existing direct conversation → just switch to it
+          if (data.already_exists) {
+            setActiveConversationId(newConv.id);
+            currentConversationId.current = newConv.id;
+            shouldOpenNewChat.current = false;
+            return prev; // don't add duplicate
           }
 
-          setActiveConversationId(newConv.id);
-          currentConversationId.current = newConv.id
-          return [newConv, ...prev];
+          // If it's actually new → same behavior as before
+          if (shouldOpenNewChat.current) {
+            setActiveConversationId(newConv.id);
+            currentConversationId.current = newConv.id;
+            shouldOpenNewChat.current = false;
+          }
+
+          return prev.some(c => c.id === newConv.id)
+            ? prev
+            : [newConv, ...prev];
         });
       }
 
@@ -221,7 +229,10 @@ export default function Messages() {
 
           return wasRemoved
             ? prev.filter(c => c.id !== updated.id)
-            : prev.map(c => c.id === updated.id ? updated : c);
+            : [
+              updated,
+              ...prev.filter(c => c.id !== updated.id)
+            ];
         });
       }
     };
@@ -238,8 +249,15 @@ export default function Messages() {
       socketRef.current.close();
     }
 
-    const ws = new WebSocket(`ws://localhost:8000/ws/conversation/${activeConversationId}/`);
+    const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${wsProtocol}://${window.location.host}/ws/conversation/${activeConversationId}/`);
     socketRef.current = ws;
+    setIsSocketReady(false);
+
+    // Update state used for deactivating Send button if socket isn't open
+    ws.onopen = () => setIsSocketReady(true);
+    ws.onclose = () => setIsSocketReady(false);
+    ws.onerror = () => setIsSocketReady(false);
 
     ws.onmessage = async (e) => {
       const data = JSON.parse(e.data);
@@ -276,6 +294,7 @@ export default function Messages() {
     // Cleanup on unmount
     return () => {
       if (ws.readyState === 1) ws.close();
+      setIsSocketReady(false);
     };
   }, [activeConversationId, currentUserEmail]);
 
@@ -347,9 +366,6 @@ export default function Messages() {
   const handleDeleteConversation = (convId: string) => {
     if (!window.confirm("Delete this entire conversation?")) return;
 
-    console.log(convId)
-    console.log(activeConversationId)
-
     conversationsSocketRef.current?.send(JSON.stringify({
       action: "delete_conversation",
       conversation_id: convId
@@ -378,10 +394,10 @@ export default function Messages() {
     }));
   };
 
-  const handleUpdateExpiration = () => {
-    // Logic goes here for the expriation date
-    setIsSettingsDropdownOpen(false);
-  };
+  // const handleUpdateExpiration = () => {
+  //   // Logic goes here for the expriation date
+  //   setIsSettingsDropdownOpen(false);
+  // };
 
 
 
@@ -389,7 +405,7 @@ export default function Messages() {
     try {
       const csrfToken = getCookie("csrftoken");
 
-      const res = await fetch("http://localhost:8000/api/logout/", {
+      const res = await fetch("/api/logout/", {
         method: "POST",
         credentials: "include",
         headers: {
@@ -407,6 +423,25 @@ export default function Messages() {
     }
   };
 
+  const formatDateLabel = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const today = new Date();
+
+    const isToday =
+      date.toDateString() === today.toDateString();
+
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    const isYesterday =
+      date.toDateString() === yesterday.toDateString();
+
+    if (isToday) return "Today";
+    if (isYesterday) return "Yesterday";
+
+    return date.toLocaleDateString();
+  };
+
   // Fetch existing messages whenever a conversation is selected
   useEffect(() => {
     if (!activeConversationId || !currentUserEmail) return;
@@ -414,7 +449,7 @@ export default function Messages() {
     const fetchMessages = async () => {
       try {
         const res = await fetch(
-          `http://localhost:8000/dashboard/${activeConversationId}/messages/`,
+          `/api/dashboard/${activeConversationId}/messages/`,
           {
             headers: authHeaders,
             credentials: "include", // important if using session auth
@@ -464,7 +499,7 @@ export default function Messages() {
       setUsers([]);
       return;
     }
-    fetch(`http://localhost:8000/api/users/?search=${encodeURIComponent(searchQuery)}`, {
+    fetch(`/api/users/?search=${encodeURIComponent(searchQuery)}`, {
       credentials: "include"
     })
       .then(res => res.json())
@@ -494,12 +529,14 @@ export default function Messages() {
     );
   };
 
-  //Logic for cerating the chat when the button is pressed
+  //Logic for creating the chat when the button is pressed
   const handleCreateChat = () => {
     if (!selectedUsers.length || !conversationsSocketRef.current) return;
 
+    shouldOpenNewChat.current = true; // Auto-open new conversation just for sender
+
     conversationsSocketRef.current.send(JSON.stringify({
-      action: "create_group",
+      action: "create_conversation",
       name: newConversationName, // optional
       participants: selectedUsers,
     }));
@@ -518,7 +555,7 @@ export default function Messages() {
     }}>
       {/* Sidebar */}
       <div style={{ width: "250px", borderRight: "1px solid #ddd", background: "#f0f0f0", display: "flex", flexDirection: "column", overflowY: "auto" }}>
-        <h3 style={{ padding: "15px" }}>Chats</h3>
+        <h3 style={{ padding: "5px" }}>Chats</h3>
         <button
           onClick={() => setIsModalOpen(true)}
           style={{ ...btnStyle, backgroundColor: "#075E54", margin: "10px" }}
@@ -609,12 +646,12 @@ export default function Messages() {
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         <div
           style={{
-            padding: "15px",
             borderBottom: "1px solid #ddd",
             background: "#eee",
             display: "flex",
             alignItems: "center",
-            position: "relative"
+            position: "relative",
+            minHeight: "70px",
           }}
         >
           {/* CENTERED CONTENT */}
@@ -637,9 +674,20 @@ export default function Messages() {
                 <div style={{ position: "relative" }} ref={settingsRef}>
                   <button
                     onClick={() => setIsSettingsDropdownOpen(!isSettingsDropdownOpen)}
-                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: "16px" }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "24px",
+                      padding: "0px 8px",
+                      lineHeight: "8px",
+                      transform: "translateY(-2px)",
+                    }}
                   >
-                    ⚙️
+                    ⚙
                   </button>
                   {isSettingsDropdownOpen && (
                     <div style={{
@@ -697,7 +745,7 @@ export default function Messages() {
                 border: "none",
                 fontSize: "20px",
                 cursor: "pointer",
-                padding: "5px"
+                padding: "5px",
               }}
             >
               ⋮
@@ -719,9 +767,14 @@ export default function Messages() {
               }}
               >
                 <button style={menuItemStyle} onClick={() => window.location.href = "/UserProfile"}>User Profile</button>
-                <button style={menuItemStyle} onClick={() => window.location.href = "/UserManagement"}>User Management</button>
-                <button style={menuItemStyle} onClick={() => window.location.href = "/Logs"}>Logs</button>
-                <button style={menuItemStyle} onClick={() => window.location.href = "/ChatDirectory"}>Chat Directory</button>
+
+                {currentUser?.is_staff && (
+                  <>
+                    <button style={menuItemStyle} onClick={() => window.location.href = "/UserManagement"}>User Management</button>
+                    <button style={menuItemStyle} onClick={() => window.location.href = "/Logs"}>Logs</button>
+                    <button style={menuItemStyle} onClick={() => window.location.href = "/ChatDirectory"}>Chat Directory</button>
+                  </>
+                )}
 
                 <hr style={{ margin: 0, border: "none", borderTop: "1px solid #eee" }} />
 
@@ -738,74 +791,103 @@ export default function Messages() {
           {messages.length === 0 ? (
             <p>No messages yet!</p>
           ) : (
-            messages.map(msg => (
-              <div
-                key={msg.id}
-                // Logic for hovering
-                onMouseEnter={() => setHoveredMessageId(msg.id)}
-                onMouseLeave={() => setHoveredMessageId(null)}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignSelf: msg.is_me ? "flex-end" : "flex-start",
-                  maxWidth: "70%",
-                }}
-              >
-                {/* Name ABOVE the bubble */}
-                {!msg.is_me && (
-                  <div style={{ fontWeight: "bold", fontSize: "12px", marginBottom: "3px" }}>
-                    {msg.sender}
-                  </div>
-                )}
+            messages.map((msg, index) => {
+              const prevMsg = messages[index - 1];
 
-                {/* Message bubble */}
-                <div
-                  style={{
-                    background: msg.is_me ? "#075E54" : "#d0d0d0ff",
-                    color: msg.is_me ? "#fff" : "#000",
-                    padding: "8px 12px",
-                    paddingRight: hoveredMessageId === msg.id && msg.is_me ? "32px" : "12px",
-                    paddingLeft: hoveredMessageId === msg.id && !msg.is_me && activeChat?.moderator === currentUserId && activeChat?.is_group ? "32px" : "12px",
-                    transition: "padding 0.15s ease",
-                    borderRadius: "8px",
-                    position: "relative"
-                  }}
-                >
+              const currentDate = new Date(msg.timestamp || "").toDateString();
+              const prevDate = prevMsg
+                ? new Date(prevMsg.timestamp || "").toDateString()
+                : null;
 
-                  {/* Function to decrypt and display text to avoid storing plaintext */}
-                  <MessageBubbleText msg={msg} decryptMessage={decryptMessage} />
+              const showDateDivider = currentDate !== prevDate;
 
-                  <div style={{ fontSize: "10px", opacity: 0.7 }}>
-                    {new Date(msg.timestamp || "").toLocaleTimeString()}
-                  </div>
-
-                  {/* Delete Button */}
-                  {hoveredMessageId === msg.id &&
-                    (
-                      msg.is_me ||
-                      (activeChat?.is_group && activeChat?.moderator === currentUserId)
-                    ) && (
-                      <button
-                        onClick={() => handleDeleteMessage(msg.id)}
-                        style={{
-                          position: "absolute",
-                          top: "5px",
-                          right: msg.is_me ? "-5px" : "auto",
-                          left: !msg.is_me ? "-5px" : "auto",
-                          background: "none",
-                          border: "none",
-                          color: "#ff4d4d",
-                          cursor: "pointer",
-                          fontSize: "14px",
-                          fontWeight: "bold"
-                        }}
-                      >
-                        ✕
-                      </button>
+              return (
+                <React.Fragment key={msg.id}>
+                  {/* DATE DIVIDER */}
+                  {showDateDivider && (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        margin: "10px 0",
+                        color: "#888",
+                        fontSize: "12px",
+                        width: "100%" // ensures it's centered across chat
+                      }}
+                    >
+                      {formatDateLabel(new Date(msg.timestamp || "").toLocaleDateString())}
+                    </div>
+                  )}
+                  <div
+                    key={msg.id}
+                    // Logic for hovering
+                    onMouseEnter={() => setHoveredMessageId(msg.id)}
+                    onMouseLeave={() => setHoveredMessageId(null)}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignSelf: msg.is_me ? "flex-end" : "flex-start",
+                      maxWidth: "70%",
+                    }}
+                  >
+                    {/* Name ABOVE the bubble */}
+                    {!msg.is_me && (
+                      <div style={{ fontWeight: "bold", fontSize: "12px", marginBottom: "3px", textAlign: "left" }}>
+                        {msg.sender}
+                      </div>
                     )}
-                </div>
-              </div>
-            ))
+
+                    {/* Message bubble */}
+                    <div
+                      style={{
+                        background: msg.is_me ? "#075E54" : "#d0d0d0ff",
+                        color: msg.is_me ? "#fff" : "#000",
+                        padding: "8px 12px",
+                        paddingRight: hoveredMessageId === msg.id && msg.is_me ? "32px" : "12px",
+                        paddingLeft: hoveredMessageId === msg.id && !msg.is_me && activeChat?.moderator === currentUserId && activeChat?.is_group ? "32px" : "12px",
+                        transition: "padding 0.15s ease",
+                        borderRadius: "8px",
+                        position: "relative",
+                        display: "inline-block",
+                        width: "fit-content"
+                      }}
+                    >
+
+                      {/* Function to decrypt and display text to avoid storing plaintext */}
+                      <MessageBubbleText msg={msg} decryptMessage={decryptMessage} />
+
+                      <div style={{ fontSize: "10px", opacity: 0.7 }}>
+                        {new Date(msg.timestamp || "").toLocaleTimeString()}
+                      </div>
+
+                      {/* Delete Button */}
+                      {hoveredMessageId === msg.id &&
+                        (
+                          msg.is_me ||
+                          (activeChat?.is_group && activeChat?.moderator === currentUserId)
+                        ) && (
+                          <button
+                            onClick={() => handleDeleteMessage(msg.id)}
+                            style={{
+                              position: "absolute",
+                              top: "5px",
+                              right: msg.is_me ? "-5px" : "auto",
+                              left: !msg.is_me ? "-5px" : "auto",
+                              background: "none",
+                              border: "none",
+                              color: "#ff4d4d",
+                              cursor: "pointer",
+                              fontSize: "14px",
+                              fontWeight: "bold"
+                            }}
+                          >
+                            ✕
+                          </button>
+                        )}
+                    </div>
+                  </div>
+                </React.Fragment>
+              );
+            })
           )}
         </div>
 
@@ -819,8 +901,15 @@ export default function Messages() {
             onKeyDown={e => { if (e.key === "Enter") handleSendMessage(); }}
           />
           <button
+            disabled={!isSocketReady}
             onClick={handleSendMessage}
-            style={{ padding: "10px 15px", borderRadius: "50%", background: "#075E54", color: "white" }}
+            style={{
+              padding: "10px 15px",
+              borderRadius: "50%",
+              backgroundColor: isSocketReady ? "#075E54" : "#F0F0F0",
+              color: "white",
+              cursor: isSocketReady ? "pointer" : "not-allowed",
+            }}
           >
             ➤
           </button>
@@ -841,7 +930,7 @@ export default function Messages() {
               <option value="30">30 Days</option>
             </select>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
-              <button onClick={() => setActiveModal(null)} style={{ padding: "8px", background: "#ddd", border: "none", cursor: "pointer" }}>Cancel</button>
+              <button onClick={() => setActiveModal(null)} style={{ padding: "8px", background: "#ddd", border: "none", cursor: "pointer", borderRadius: "4px" }}>Cancel</button>
               <button onClick={() => setActiveModal(null)} style={{ padding: "8px", background: "#075E54", color: "white", border: "none", cursor: "pointer", borderRadius: "4px" }}>Save Settings</button>
             </div>
           </div>
@@ -875,6 +964,7 @@ export default function Messages() {
                 }}>
                   {users
                     .filter(u => !activeChat.participants.some(p => p.username === u.username))
+                    .filter(u => u.id !== currentUserId)
                     .map((user) => (
                       <div
                         key={user.id}
@@ -935,7 +1025,7 @@ export default function Messages() {
             width: "300px", boxShadow: "0 2px 10px rgba(0,0,0,0.1)"
           }}>
             <h3>New Chat</h3>
-            <div style={{ position: "relative", width: "90%" }}>
+            <div style={{ position: "relative", display: "flex", flexWrap: "wrap" }}>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "5px", marginBottom: "10px" }}>
                 {selectedUsers.map((username) => (
                   <div
@@ -983,34 +1073,36 @@ export default function Messages() {
                     zIndex: 1001,
                   }}
                 >
-                  {users.map((user) => (
-                    <div
-                      key={user.id}
-                      onClick={() => {
-                        toggleUser(user.username);
-                        setSearchQuery(""); // clear after select
-                      }}
-                      style={{
-                        padding: "8px",
-                        cursor: "pointer",
-                        background: selectedUsers.includes(user.username)
-                          ? "#ddd"
-                          : "white",
-                      }}
-                    >
-                      {user.username}
-                    </div>
-                  ))}
+                  {users
+                    .filter(u => u.id !== currentUserId)
+                    .map((user) => (
+                      <div
+                        key={user.id}
+                        onClick={() => {
+                          toggleUser(user.username);
+                          setSearchQuery(""); // clear after select
+                        }}
+                        style={{
+                          padding: "8px",
+                          cursor: "pointer",
+                          background: selectedUsers.includes(user.username)
+                            ? "#ddd"
+                            : "white",
+                        }}
+                      >
+                        {user.username}
+                      </div>
+                    ))}
                 </div>
               )}
             </div>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
               <button onClick={() => {
                 setIsModalOpen(false);
                 setSelectedUsers([]);
                 setConversationName("");
-              }} style={{ padding: "8px", color: "#000000", background: "#ddd" }}>Cancel</button>
+              }} style={{ padding: "8px", color: "#000000", background: "#ddd", borderRadius: "4px" }}>Cancel</button>
               <button onClick={handleCreateChat} style={{ padding: "8px", background: "#075E54", color: "white", borderRadius: "4px" }}>Create</button>
             </div>
           </div>

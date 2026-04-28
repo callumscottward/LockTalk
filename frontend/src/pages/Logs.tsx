@@ -1,5 +1,15 @@
 import { useState, useEffect } from 'react';
 
+/**
+ * @name Logs
+ * ## Logs Component
+ * This module provides an administrative audit trail of platform events.
+ * It tracks communication events like messages and system events like logins,
+ * detailing the sender, receiver, timestamp, and success status of each action.
+ * @category Admin Pages
+ * @returns A scrollable table view of system activity logs.
+ */
+
 interface Log {
   id: number;
   event_type: string;
@@ -42,16 +52,6 @@ export default function Logs() {
   );
 
   if (loading) return <p>Loading logs...</p>;
-
-  // // TEMP DATA. Delete when actual implementation is put in.
-  // const logs = Array.from({ length: 10 }, (_, i) => ({
-  //   logNum: i + 1,
-  //   eventType: i % 2 === 0 ? "SMS" : "Login",
-  //   to: 'Mary',
-  //   from: 'Marge',
-  //   dateTime: '2026-03-21, 3:11PM',
-  //   status: i % 3 === 0 ? "Fail" : "Success",
-  // }));
 
   return (
     <div style={{ 
@@ -154,7 +154,7 @@ export default function Logs() {
         <div style={{ flex: 1, overflowY: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
             <tbody>
-              {logs.map((log) => (
+              {filteredLogs.map((log) => (
                 <tr key={log.id} style={{ borderBottom: "1px solid #eee" }}>
                   <td style={bodyStyle}>{log.event_type}</td>
                   <td style={bodyStyle}>{log.receiver}</td>

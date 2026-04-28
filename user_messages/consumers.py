@@ -92,6 +92,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.delete_message(data)
         else:
             message = data.get("message")
+            priority = data.get("priority", "normal")
             if not message:
                 return
             
@@ -100,7 +101,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 lambda: Message.objects.create(
                     conversation=self.conversation,
                     sender=self.user,
-                    content=message
+                    content=message,
+                    priority=priority,
             )
             )()
             
@@ -114,6 +116,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     "sender_name": f"{self.user.first_name} {self.user.last_name}",
                     "message_id": details.id,
                     "timestamp": details.created_at.isoformat(),
+                    "priority": details.priority,
                 }
             )
             
@@ -153,6 +156,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             "sender_email": event["sender_email"],
             "sender_name": event["sender_name"],
             "message_id": event["message_id"],
+            "priority": event.get("priority", "normal"), 
         }))
         
     async def delete_message(self, content):

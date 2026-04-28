@@ -9,7 +9,7 @@ class MessageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Message
-        fields = ["id", "sender", "content", "created_at", "sender_email"]
+        fields = ["id", "sender", "content", "created_at", "sender_email", "priority"]
 
 
 User = get_user_model()

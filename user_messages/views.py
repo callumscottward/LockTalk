@@ -181,7 +181,6 @@ class LogListView(APIView):
         serializer = LogSerializer(logs, many=True)
         rotate_logs_if_needed()
         return Response(serializer.data)
-        return Response(serializer.data)
     
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

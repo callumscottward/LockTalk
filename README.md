@@ -43,15 +43,11 @@ Deactivate later with:
 deactivate
 ```
 
----
-
 ## 2. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
-
----
 
 ## 3. Run Database Migrations
 
@@ -80,11 +76,7 @@ To access the server in a browser, visit:
 http://localhost:8000/
 ```
 
----
-
 Now, keep this backend server running in one terminal and open a new instance to run and open the site's frontend.
-
----
 
 # React Setup (Frontend)
 
@@ -92,16 +84,12 @@ Now, keep this backend server running in one terminal and open a new instance to
 
 Follow steps on https://nodejs.org/en/download to download Node on your machine, which will ensure you have NPM and can run subsequent steps.
 
----
-
 ## 2. Get Plugins Up to Date and Initialize Frontend
 
 ```bash
 cd frontend
 npm install
 ```
-
----
 
 ## 3. Run the Frontend Server
 
@@ -114,6 +102,40 @@ To access and load into the GUI of LockTalk, visit:
 ```
 http://localhost:5173/
 ```
+
+# Optional: Hosting site on HTTPS
+For stronger security and encrypted site traffic, follow the below steps depending on your machine's operating system to obtain HTTPS hosting certificates
+
+## 1. Install mkcert
+
+**Windows (PowerShell)**
+
+```bash
+winget install FiloSottile.mkcert
+mkcert -install
+```
+
+**macOS**
+
+```bash
+brew install mkcert
+brew install nss
+mkcert -install
+```
+
+## 2. Create certificates in a directory of your choice
+
+```bash
+mkdir certs
+cd certs
+mkcert localhost 127.0.0.1::1
+```
+
+## 3. Add the newly created certs to frontend/.env
+
+Create a file titled ".env" within the project's "frontend" folder as a duplicate of the ".env.example" file in the same directory. In this file, copy the directory of the new HTTPS key and cert files that should be in a folder called "certs" following previous instructions as the values for LOCAL_HTTPS_KEY and LOCAL_HTTPS_CERT respectively.
+
+When completed, .env's LOCAL_HTTPS_KEY should point to a file titled "localhost+2-key.pem" and LOCAL_HTTPS_CERT should point to "localhost+2.pem". These files will be referenced by Vite and should allow future instances of the application to automatically switch from HTTP to HTTPS.
 
 # Setup: Running Redis with Docker
 To handle WebSockets (Django Channels), our project requires a Redis server. We use Docker to ensure everyone is running the same version.

@@ -46,11 +46,11 @@ export default function Logs() {
   }, []);
 
   // Filter logs based on searchTerm
-  // const filteredLogs = logs.filter(log =>
-  //   log.sender.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  //   log.receiver.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  //   log.event_type.toLowerCase().includes(searchTerm.toLowerCase())
-  // );
+  const filteredLogs = logs.filter(log =>
+    log.sender.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    log.receiver.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    log.event_type.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   if (loading) return <p>Loading logs...</p>;
 

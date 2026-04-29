@@ -39,6 +39,12 @@ class Message(models.Model):
         SYSTEM = "system", "System"
         IMAGE = "image", "Image"
 
+    PRIORITY_CHOICES = [
+        ("normal", "Normal"),
+        ("sensitive", "Sensitive"),
+        ("highly_sensitive", "Highly Sensitive"),
+    ]
+
     conversation = models.ForeignKey(
         Conversation,
         on_delete=models.CASCADE,
@@ -60,11 +66,20 @@ class Message(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    priority = models.CharField(
+        max_length=20,
+        choices=PRIORITY_CHOICES,
+        default="normal"
+    )
+
 class Log(models.Model):
     EVENT_CHOICES = [
         ('SMS', 'SMS'),
         ('LOGIN', 'Login'),
-        ('REGISTER', 'Register')
+        ('REGISTER', 'Register'),
+        ('DELETE_SMS', 'DELETE_SMS'),
+        ('LOGOUT', 'LOGOUT'),
+        ('DELETE_CONVO', 'DELETE_CONVO')
     ]
 
     event_type = models.CharField(max_length=50, choices=EVENT_CHOICES)

@@ -5,6 +5,9 @@ from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import User
 from user_messages.models import Log
 from django.contrib.auth import authenticate, login, logout, get_user_model
+from django.utils.decorators import method_decorator
+
+from django_ratelimit.decorators import ratelimit
 
 from .forms import CustomUserCreationForm
 
@@ -23,11 +26,15 @@ class member_detail_api(APIView):
             "lastName": member.last_name
         })
 
-
 class login_api(APIView):
     permission_classes = [AllowAny]
 
+    @method_decorator(ratelimit(key='ip', rate='2/m', block=False))
+    @method_decorator(ratelimit(key='post:email', rate='2/m', block=False))
     def post(self, request):
+        if getattr(request, "limited", False):
+            return Response({"error": "Too many attempts"}, status=429)
+
         email = request.data.get("email")
         password = request.data.get("password")
 
@@ -43,19 +50,18 @@ class login_api(APIView):
             )
             return Response({
                 "success": True,
-                "message": "Login successful",
                 "user": {
                     "email": user.email,
                     "username": user.username
                 }
             })
-        else:
-            Log.objects.create(
-                event_type='LOGIN',
-                sender=email,
-                receiver='SYSTEM',
-                success=False
-            )
+
+        Log.objects.create(
+            event_type='LOGIN',
+            sender=email,
+            receiver='SYSTEM',
+            success=False
+        )
 
         return Response({
             "success": False,
@@ -66,7 +72,15 @@ class LogoutAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        user_email = request.user.email
+
         logout(request)
+        Log.objects.create(
+                event_type='LOGOUT',
+                sender=user_email,
+                receiver='SYSTEM',
+                success=True
+            )
         return Response({"message": "Logged out successfully"})
 
 class register_api(APIView):

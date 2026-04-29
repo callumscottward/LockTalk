@@ -1,15 +1,21 @@
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
+from rest_framework import generics, permissions
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from .models import Message, Conversation, Log
 from .serializers import ConversationSerializer
+from .serializers import CurrentUserSerializer
 from .serializers import MessageSerializer
 from .serializers import LogSerializer
+from .logs_rotate import rotate_logs_if_needed
+
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 
 User = get_user_model()
 
@@ -118,10 +124,91 @@ class ConversationCreateView(APIView):
         serializer = ConversationSerializer(conversation)
         return Response(serializer.data, status=201)
     
-class LogListView(APIView):
+class AddMemberView(APIView):
     permission_classes = [IsAuthenticated]
+
+    def post(self, request, conversation_id):
+        conversation = get_object_or_404(Conversation, id=conversation_id)
+
+        username = request.data.get("username")
+        if not username:
+            return Response({"error": "username required"}, status=400)
+
+        user = get_object_or_404(User, username=username)
+
+        if conversation.participants.filter(id=user.id).exists():
+            return Response({"message": "already a member"}, status=200)
+
+        conversation.participants.add(user)
+        conversation.refresh_from_db()
+
+        return Response(
+            ConversationSerializer(conversation, context={"request": request}).data,
+            status=200
+        )
+
+class RemoveMemberView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, conversation_id):
+        conversation = get_object_or_404(Conversation, id=conversation_id)
+
+        user_id = request.data.get("userId")
+        if not user_id:
+            return Response({"error": "userId required"}, status=400)
+
+        user = get_object_or_404(User, id=user_id)
+
+        # only remove if they exist
+        if not conversation.participants.filter(id=user.id).exists():
+            return Response({"error": "User not in conversation"}, status=400)
+
+        conversation.participants.remove(user)
+        conversation.refresh_from_db()
+
+        return Response(
+            ConversationSerializer(conversation, context={"request": request}).data,
+            status=200
+        )
+
+
+class LogListView(APIView):
+    # Changed from IsAuthenticated so admins can only see the logs even fetching them
+    permission_classes = [IsAdminUser]
 
     def get(self, request):
         logs = Log.objects.all().order_by('-timestamp')  # newest first
         serializer = LogSerializer(logs, many=True)
+        rotate_logs_if_needed()
         return Response(serializer.data)
+    
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_current_user(request):
+    # This uses the UserSerializer you modified with 'is_staff'
+    serializer = CurrentUserSerializer(request.user)
+    return Response(serializer.data)
+
+# Admins use this to get all the conversations (for chatDirectory)
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def all_conversations_directory(request):
+    conversations = Conversation.objects.all()
+    serializer = ConversationSerializer(conversations, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def all_users_list(request):
+    users = User.objects.all().order_by('-date_joined')
+    data = [{
+        "id": u.id,
+        "username": u.username,
+        "email": u.email,
+        "is_staff": u.is_staff,
+        "is_active": u.is_active,
+        "date_joined": u.date_joined
+    } for u in users]
+
+    #response
+    return Response(data)

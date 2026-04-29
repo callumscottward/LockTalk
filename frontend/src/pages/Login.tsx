@@ -1,9 +1,34 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+/**
+ * @name Login
+ * ## Login Component
+ * This module is where users can log in. They enter their
+ * username or email and password. If it matches then they are
+ * moved to the dashboard and enter their account, otherwise it
+ * is a failed sign in attempt.
+ * @category Pages
+ * @returns The login page for returning users.
+ */
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setCooldown(c => c - 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [cooldown]);
 
   function getCSRFToken() {
     const match = document.cookie.match(/csrftoken=([\w-]+)/);
@@ -23,6 +48,13 @@ function Login() {
       body: JSON.stringify({ email, password }),
     });
 
+    if (response.status === 429) {
+      setMessage("Too many attempts. Please wait a moment.");
+      setCooldown(60);
+      return;
+    }
+
+
     const data = await response.json();
 
     if (data.success) {
@@ -30,6 +62,7 @@ function Login() {
       window.location.href = "/dashboard";
     } else {
       setMessage(data.message);
+      setCooldown(3);
     }
   };
 
@@ -81,9 +114,10 @@ function Login() {
 
           <button
             type="submit"
+            disabled={cooldown > 0}
             style={{
               padding: "10px",
-              backgroundColor: "#007bff",
+              backgroundColor: cooldown > 0 ? "#8e8e8eff" : "#007bff",
               color: "white",
               border: "none",
               borderRadius: "4px",
@@ -91,7 +125,7 @@ function Login() {
               fontSize: "16px",
             }}
           >
-            Login
+            {cooldown > 0 ? `Wait ${cooldown}s` : "Login"}
           </button>
         </form>
 

@@ -1,5 +1,15 @@
 import { useState } from "react";
 
+/**
+ * @name Signup
+ * ## Signup Component
+ * This is the sign up page where new users enter new credentials to create
+ * an account. This requires them to input a username and password as well
+ * as some other identifying information to join the site.
+ * @category Pages
+ * @returns A centered sign up page for new users.
+ */
+
 interface SignupResponse {
   success?: boolean;
   message?: string;

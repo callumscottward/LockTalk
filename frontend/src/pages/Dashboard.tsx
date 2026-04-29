@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect, useRef } from 'react';
 import { encryptMessage, decryptMessage, receiveKemHandshake, createKemHandshake, sessionKeys } from '../utilities/MessageCryptography';
 
@@ -17,6 +18,7 @@ interface Message {
   encrypted_content: { iv: Array<number>, data: Array<number> };
   is_me: boolean;
   timestamp?: string;
+  priority?: "normal" | "sensitive" | "highly_sensitive";
 }
 
 /* Can be used for searching */
@@ -75,6 +77,7 @@ export default function Messages() {
   const currentUserIdRef = useRef<number | null>(null);
   const currentUserEmailRef = useRef<string | null>(null);
   const currentConversationId = useRef<string | null>(null);
+  const [messagePriority, setMessagePriority] = useState<"normal" | "sensitive" | "highly_sensitive">("normal");
 
   const authHeaders = {
     "Content-Type": "application/json",
@@ -140,33 +143,24 @@ export default function Messages() {
         setConversations(prev => {
           const newConv = data.conversation;
 
-          const existingIndex = prev.findIndex(conv => {
-            if (conv.participants.length !== newConv.participants.length) return false;
-
-            const set = new Set(conv.participants.map(p => p.username));
-            return newConv.participants.every((p: { username: string }) => set.has(p.username));
-          });
-
-          if (existingIndex !== -1) {
-            const updated = [...prev];
-            const existing = updated.splice(existingIndex, 1)[0];
-            
-            if (shouldOpenNewChat.current) {
-              setActiveConversationId(existing.id);
-              currentConversationId.current = existing.id;
-              shouldOpenNewChat.current = false;
-            }
-
-            return [existing, ...updated];
+          // If it's an existing direct conversation → just switch to it
+          if (data.already_exists) {
+            setActiveConversationId(newConv.id);
+            currentConversationId.current = newConv.id;
+            shouldOpenNewChat.current = false;
+            return prev; // don't add duplicate
           }
 
+          // If it's actually new → same behavior as before
           if (shouldOpenNewChat.current) {
             setActiveConversationId(newConv.id);
             currentConversationId.current = newConv.id;
             shouldOpenNewChat.current = false;
           }
 
-          return [newConv, ...prev];
+          return prev.some(c => c.id === newConv.id)
+            ? prev
+            : [newConv, ...prev];
         });
       }
 
@@ -209,7 +203,10 @@ export default function Messages() {
 
           return wasRemoved
             ? prev.filter(c => c.id !== updated.id)
-            : prev.map(c => c.id === updated.id ? updated : c);
+            : [
+              updated,
+              ...prev.filter(c => c.id !== updated.id)
+            ];
         });
       }
     };
@@ -257,6 +254,7 @@ export default function Messages() {
             // the .trim().toLowerCase() ensures they are identical
             is_me: data.sender_email.trim().toLowerCase() === currentUserEmail?.trim().toLowerCase(),
             timestamp: data.timestamp || new Date().toISOString(),
+            priority: data.priority || "normal", //added
           }
         ]);
 
@@ -340,6 +338,7 @@ export default function Messages() {
     }));
     
     setMessageInput("");
+    setMessagePriority("normal");
   };
 
   const handleDeleteMessage = (messageId: number) => {
@@ -353,9 +352,6 @@ export default function Messages() {
 
   const handleDeleteConversation = (convId: string) => {
     if (!window.confirm("Delete this entire conversation?")) return;
-
-    console.log(convId)
-    console.log(activeConversationId)
 
     conversationsSocketRef.current?.send(JSON.stringify({
       action: "delete_conversation",
@@ -469,6 +465,7 @@ export default function Messages() {
             encrypted_content: content,
             is_me: msg.sender.trim() === currentUserEmail.trim(),
             timestamp: msg.created_at,
+            priority: msg.priority || "normal",
           };
         });
 
@@ -523,9 +520,9 @@ export default function Messages() {
     if (!selectedUsers.length || !conversationsSocketRef.current) return;
 
     shouldOpenNewChat.current = true; // Auto-open new conversation just for sender
-    
+
     conversationsSocketRef.current.send(JSON.stringify({
-      action: "create_group",
+      action: "create_conversation",
       name: newConversationName, // optional
       participants: selectedUsers,
     }));
@@ -534,6 +531,17 @@ export default function Messages() {
     setSearchQuery("");
     setConversationName("");
     setIsModalOpen(false);
+  };
+
+
+  const getPriorityBorder = (msg: Message) => {
+    if (msg.priority === "highly_sensitive") {
+      return "3px solid #ff4d4d"; // red outline
+  }
+    if (msg.priority === "sensitive") {
+      return "3px solid #ffa500"; // orange outline
+  }
+    return "none";
   };
 
   return (
@@ -790,98 +798,108 @@ export default function Messages() {
 
               const showDateDivider = currentDate !== prevDate;
 
-        return (
-            <>
-              {/* DATE DIVIDER */}
-              {showDateDivider && (
-              <div
-                style={{
-                  textAlign: "center",
-                  margin: "10px 0",
-                  color: "#888",
-                  fontSize: "12px",
-                  width: "100%" // ensures it's centered across chat
-                }}
+              return (
+                <React.Fragment key={msg.id}>
+                  {/* DATE DIVIDER */}
+                  {showDateDivider && (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        margin: "10px 0",
+                        color: "#888",
+                        fontSize: "12px",
+                        width: "100%" // ensures it's centered across chat
+                      }}
+                    >
+                      {formatDateLabel(new Date(msg.timestamp || "").toLocaleDateString())}
+                    </div>
+                  )}
+                  <div
+                    key={msg.id}
+                    // Logic for hovering
+                    onMouseEnter={() => setHoveredMessageId(msg.id)}
+                    onMouseLeave={() => setHoveredMessageId(null)}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignSelf: msg.is_me ? "flex-end" : "flex-start",
+                      maxWidth: "70%",
+                    }}
                   >
-                {formatDateLabel(new Date(msg.timestamp || "").toLocaleDateString())}
-              </div>
-                )}
-              <div
-                key={msg.id}
-                // Logic for hovering
-                onMouseEnter={() => setHoveredMessageId(msg.id)}
-                onMouseLeave={() => setHoveredMessageId(null)}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignSelf: msg.is_me ? "flex-end" : "flex-start",
-                  maxWidth: "70%",
-                }}
-              >
-                {/* Name ABOVE the bubble */}
-                {!msg.is_me && (
-                  <div style={{ fontWeight: "bold", fontSize: "12px", marginBottom: "3px", textAlign: "left" }}>
-                    {msg.sender}
-                  </div>
-                )}
-
-                {/* Message bubble */}
-                <div
-                  style={{
-                    background: msg.is_me ? "#075E54" : "#d0d0d0ff",
-                    color: msg.is_me ? "#fff" : "#000",
-                    padding: "8px 12px",
-                    paddingRight: hoveredMessageId === msg.id && msg.is_me ? "32px" : "12px",
-                    paddingLeft: hoveredMessageId === msg.id && !msg.is_me && activeChat?.moderator === currentUserId && activeChat?.is_group ? "32px" : "12px",
-                    transition: "padding 0.15s ease",
-                    borderRadius: "8px",
-                    position: "relative",
-                    display: "inline-block",
-                    width: "fit-content"
-                  }}
-                >
-
-                  {/* Function to decrypt and display text to avoid storing plaintext */}
-                  <MessageBubbleText msg={msg} decryptMessage={decryptMessage} />
-
-                  <div style={{ fontSize: "10px", opacity: 0.7 }}>
-                    {new Date(msg.timestamp || "").toLocaleTimeString()}
-                  </div>
-
-                  {/* Delete Button */}
-                  {hoveredMessageId === msg.id &&
-                    (
-                      msg.is_me ||
-                      (activeChat?.is_group && activeChat?.moderator === currentUserId)
-                    ) && (
-                      <button
-                        onClick={() => handleDeleteMessage(msg.id)}
-                        style={{
-                          position: "absolute",
-                          top: "5px",
-                          right: msg.is_me ? "-5px" : "auto",
-                          left: !msg.is_me ? "-5px" : "auto",
-                          background: "none",
-                          border: "none",
-                          color: "#ff4d4d",
-                          cursor: "pointer",
-                          fontSize: "14px",
-                          fontWeight: "bold"
-                        }}
-                      >
-                        ✕
-                      </button>
+                    {/* Name ABOVE the bubble */}
+                    {!msg.is_me && (
+                      <div style={{ fontWeight: "bold", fontSize: "12px", marginBottom: "3px", textAlign: "left" }}>
+                        {msg.sender}
+                      </div>
                     )}
-                </div>
-              </div>
-              </>
-            );
-          })
+
+                    {/* Message bubble */}
+                    <div
+                      style={{
+                        background: msg.is_me ? "#075E54" : "#d0d0d0ff",
+                        color: msg.is_me ? "#fff" : "#000",
+                        border: getPriorityBorder(msg),
+                        padding: "8px 12px",
+                        paddingRight: hoveredMessageId === msg.id && msg.is_me ? "32px" : "12px",
+                        paddingLeft: hoveredMessageId === msg.id && !msg.is_me && activeChat?.moderator === currentUserId && activeChat?.is_group ? "32px" : "12px",
+                        transition: "padding 0.15s ease",
+                        borderRadius: "8px",
+                        position: "relative",
+                        display: "inline-block",
+                        width: "fit-content"
+                      }}
+                    >
+
+                      {/* Function to decrypt and display text to avoid storing plaintext */}
+                      <MessageBubbleText msg={msg} decryptMessage={decryptMessage} />
+
+                      <div style={{ fontSize: "10px", opacity: 0.7 }}>
+                        {new Date(msg.timestamp || "").toLocaleTimeString()}
+                      </div>
+
+                      {/* Delete Button */}
+                      {hoveredMessageId === msg.id &&
+                        (
+                          msg.is_me ||
+                          (activeChat?.is_group && activeChat?.moderator === currentUserId)
+                        ) && (
+                          <button
+                            onClick={() => handleDeleteMessage(msg.id)}
+                            style={{
+                              position: "absolute",
+                              top: "5px",
+                              right: msg.is_me ? "-5px" : "auto",
+                              left: !msg.is_me ? "-5px" : "auto",
+                              background: "none",
+                              border: "none",
+                              color: "#ff4d4d",
+                              cursor: "pointer",
+                              fontSize: "14px",
+                              fontWeight: "bold"
+                            }}
+                          >
+                            ✕
+                          </button>
+                        )}
+                    </div>
+                  </div>
+                </React.Fragment>
+              );
+            })
           )}
         </div>
 
         {/* Input */}
         <div style={{ padding: "10px", borderTop: "1px solid #ddd", display: "flex", gap: "10px" }}>
+          <select
+            value={messagePriority}
+            onChange={(e) => setMessagePriority(e.target.value as any)}
+            style={{ padding: "6px", borderRadius: "6px" }}
+          >
+            <option value="normal">Normal</option>
+            <option value="sensitive">Sensitive</option>
+            <option value="highly_sensitive">Highly Sensitive</option>
+          </select>
           <input
             style={{ flex: 1, padding: "10px", borderRadius: "20px", border: "1px solid #075E54" }}
             placeholder="Type a message..."
@@ -1081,7 +1099,7 @@ export default function Messages() {
                       >
                         {user.username}
                       </div>
-                  ))}
+                    ))}
                 </div>
               )}
             </div>

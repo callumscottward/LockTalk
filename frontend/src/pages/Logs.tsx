@@ -1,6 +1,16 @@
 import { useState, useEffect } from 'react';
 import DataTable, { filterStyle, btnStyle, bodyStyle } from '../components/DataTable';
 
+/**
+ * @name Logs
+ * ## Logs Component
+ * This module provides an administrative audit trail of platform events.
+ * It tracks communication events like messages and system events like logins,
+ * detailing the sender, receiver, timestamp, and success status of each action.
+ * @category Admin Pages
+ * @returns A scrollable table view of system activity logs.
+ */
+
 interface Log {
   id: number;
   event_type: string;

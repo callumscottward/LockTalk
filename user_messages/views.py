@@ -181,7 +181,6 @@ class LogListView(APIView):
         serializer = LogSerializer(logs, many=True)
         rotate_logs_if_needed()
         return Response(serializer.data)
-        return Response(serializer.data)
     
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -189,3 +188,27 @@ def get_current_user(request):
     # This uses the UserSerializer you modified with 'is_staff'
     serializer = CurrentUserSerializer(request.user)
     return Response(serializer.data)
+
+# Admins use this to get all the conversations (for chatDirectory)
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def all_conversations_directory(request):
+    conversations = Conversation.objects.all()
+    serializer = ConversationSerializer(conversations, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def all_users_list(request):
+    users = User.objects.all().order_by('-date_joined')
+    data = [{
+        "id": u.id,
+        "username": u.username,
+        "email": u.email,
+        "is_staff": u.is_staff,
+        "is_active": u.is_active,
+        "date_joined": u.date_joined
+    } for u in users]
+
+    #response
+    return Response(data)

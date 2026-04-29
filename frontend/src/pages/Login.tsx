@@ -1,5 +1,16 @@
 import { useEffect, useState } from "react";
 
+/**
+ * @name Login
+ * ## Login Component
+ * This module is where users can log in. They enter their
+ * username or email and password. If it matches then they are
+ * moved to the dashboard and enter their account, otherwise it
+ * is a failed sign in attempt.
+ * @category Pages
+ * @returns The login page for returning users.
+ */
+
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

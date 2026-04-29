@@ -7,4 +7,5 @@
   "compilerOptions": {
     "types": ["vitest/globals"]
   },
+  "exclude": ["**/*.test.ts", "**/*.test.tsx"]
 }

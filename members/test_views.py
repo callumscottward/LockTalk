@@ -18,7 +18,7 @@ class LoginTests(TestCase):
 
     def test_login_success(self):
         response = self.client.post("/api/login/", {
-            "email": "test@test.com",
+            "email": "testuser",
             "password": "password123"
         })
 

@@ -1,44 +1,47 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import UserProfile from './UserProfile';
+import { render, screen, waitFor } from "@testing-library/react";
+import { vi } from "vitest";
+import UserProfile from "./UserProfile";
 
-describe('UserProfile', () => {
-  beforeEach(() => {
-    global.fetch = jest.fn(() =>
+global.fetch = vi.fn(() =>
+  Promise.resolve({
+    json: () =>
       Promise.resolve({
-        json: () =>
-          Promise.resolve({
-            username: 'testuser',
-            email: 'test@example.com',
-            is_staff: true,
-          }),
-      })
-    ) as jest.Mock;
+        username: "testuser",
+        email: "test@example.com",
+        is_staff: true,
+      }),
+  })
+) as any;
+
+describe("UserProfile", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  test('renders page title', () => {
+  test("renders page title", () => {
     render(<UserProfile />);
-    expect(screen.getByText(/Account Details/i)).toBeInTheDocument();
+    expect(screen.getByText(/account details/i)).toBeInTheDocument();
   });
 
-  test('fetches and displays user data', async () => {
-    render(<UserProfile />);
-
-    await waitFor(() => {
-      expect(screen.getByText('testuser')).toBeInTheDocument();
-      expect(screen.getByText('test@example.com')).toBeInTheDocument();
-    });
-  });
-
-  test('shows Admin role for staff user', async () => {
+  test("fetches and displays user data", async () => {
     render(<UserProfile />);
 
     await waitFor(() => {
-      expect(screen.getByText('Admin')).toBeInTheDocument();
+      expect(screen.getByText("testuser")).toBeInTheDocument();
+      expect(screen.getByText("test@example.com")).toBeInTheDocument();
     });
   });
 
-  test('back button exists', () => {
+  test("shows admin role", async () => {
     render(<UserProfile />);
-    expect(screen.getByText(/←/)).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText("Admin")).toBeInTheDocument();
+    });
+  });
+
+  test("renders back button", () => {
+    render(<UserProfile />);
+    expect(screen.getByText("←")).toBeInTheDocument();
   });
 });

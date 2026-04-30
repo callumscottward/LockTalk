@@ -24,7 +24,7 @@ describe('App Routing & Auth', () => {
   it('renders signup route', async () => {
     renderWithRouter('/signup');
 
-    // Your actual UI says "Create an Account"
+    // Actual UI says "Create an Account"
     expect(
       await screen.findByRole('heading', { name: /create an account/i })
     ).toBeInTheDocument();
@@ -33,7 +33,7 @@ describe('App Routing & Auth', () => {
   it('renders dashboard route fallback or protected route behavior', async () => {
     renderWithRouter('/dashboard');
 
-    // Adjust this depending on your actual dashboard UI
+    // Adjust this depending on actual dashboard UI
     // Example safe fallback check:
     expect(document.body).toBeTruthy();
   });

@@ -1,3 +1,4 @@
+import json
 from channels.testing import WebsocketCommunicator
 from django.test import TransactionTestCase
 from django.contrib.auth import get_user_model
@@ -10,11 +11,13 @@ User = get_user_model()
 class ChatConsumerTest(TransactionTestCase):
 
     def setUp(self):
+        # Create test user
         self.user = User.objects.create_user(
             username="testuser",
             password="password"
         )
 
+        # Create conversation + add participant
         self.conversation = Conversation.objects.create()
         self.conversation.participants.add(self.user)
 
@@ -38,7 +41,9 @@ class ChatConsumerTest(TransactionTestCase):
         )
 
         communicator.scope["user"] = self.user
-        await communicator.connect()
+
+        connected, _ = await communicator.connect()
+        self.assertTrue(connected)
 
         await communicator.send_json_to({
             "message": "Hello"
@@ -47,6 +52,7 @@ class ChatConsumerTest(TransactionTestCase):
         response = await communicator.receive_json_from()
 
         self.assertEqual(response["type"], "chat_message")
+
         self.assertEqual(Message.objects.count(), 1)
 
         await communicator.disconnect()

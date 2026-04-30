@@ -3,6 +3,7 @@ from django.db import models
 from user_messages.consumers import User
 from user_messages.models import Conversation
 
+#Defines a database table to store encryption keys for users
 class UserKemKey(models.Model):
     user = models.OneToOneField(
         User,

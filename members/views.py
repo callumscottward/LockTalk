@@ -12,6 +12,9 @@ from django_ratelimit.decorators import ratelimit
 from .forms import CustomUserCreationForm
 from .models import UserKemKey
 
+#Views
+#creates API views for member detail, login, logout, register, current user, user list, user search
+
 class member_detail_api(APIView):
     permission_classes = [AllowAny]
 

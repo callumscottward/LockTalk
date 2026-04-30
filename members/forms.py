@@ -2,6 +2,9 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 
+#Creates form for creating a new user
+#entries include first name, last name, email, password, and password confirmation
+
 class CustomUserCreationForm(UserCreationForm):
     first_name = forms.CharField(
         max_length=30,
@@ -30,6 +33,7 @@ class CustomUserCreationForm(UserCreationForm):
         model = User
         fields = ('first_name', 'last_name', 'email', 'password1', 'password2')
 
+    #Saves the new user to the database
     def save(self, commit=True):
         user = super().save(commit=False)
         user.username = self.cleaned_data['email']

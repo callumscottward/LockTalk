@@ -42,7 +42,7 @@ describe("Login Page", () => {
       screen.getByRole("button", { name: /login/i })
     );
 
-    // Adjust depending on your app behavior
+    // Adjust depending on app behavior
     expect(true).toBe(true);
   });
 });

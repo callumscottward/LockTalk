@@ -12,9 +12,7 @@ describe('ProtectedRoutes', () => {
   });
 
   test('shows loading initially', async () => {
-    global.fetch = vi.fn(
-      () => new Promise(() => {}) // never resolves
-    );
+    global.fetch = vi.fn(() => new Promise(() => {}));
 
     render(
       <MemoryRouter initialEntries={['/']}>

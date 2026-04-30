@@ -23,7 +23,6 @@ export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [, setLoading] = useState(true);
 
-  // All the users since it is admin view
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -41,10 +40,18 @@ export default function UserManagement() {
     fetchUsers();
   }, []);
 
-  const filteredUsers = users.filter(u =>
-    u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = (users ?? []).filter(u => {
+    if (!u) return false;
+
+    const username = u.username ?? "";
+    const email = u.email ?? "";
+    const search = searchTerm ?? "";
+
+    return (
+      username.toLowerCase().includes(search.toLowerCase()) ||
+      email.toLowerCase().includes(search.toLowerCase())
+    );
+  });
 
   return (
     <div style={{ 
@@ -58,9 +65,7 @@ export default function UserManagement() {
       boxSizing: "border-box"
     }}>
       
-      {/* --- Header Section --- */}
       <div style={{ marginBottom: "20px", flexShrink: 0 }}>
-        {/* Back Button */}
         <button 
           onClick={() => window.location.href = "/Dashboard"} 
           style={{
@@ -80,97 +85,66 @@ export default function UserManagement() {
         </button>
 
         <h2 style={{ margin: "0 0 15px 0" }}>User Management</h2>
-        
-        {/* Line 1: Search Bar */}
-        <div style={{ marginBottom: "12px" }}>
-          <input 
-            type="text" 
-            placeholder="Search by name, email, or ID..." 
-            style={{ 
-              width: "100%", 
-              padding: "12px", 
-              borderRadius: "6px", 
-              border: "1px solid #ccc",
-              fontSize: "1rem",
-              boxSizing: "border-box",
 
-            }}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-
-        {/* Line 2: Filters */}
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          <select style={filterStyle}>
-            <option value="">User Role</option>
-            <option value="admin">Admin</option>
-            <option value="editor">Editor</option>
-            <option value="viewer">Viewer</option>
-          </select>
-
-          <select style={filterStyle}>
-            <option value="">Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-
-          <button style={{ ...btnStyle, backgroundColor: "#6c757d" }}>Reset</button>
-          <button style={{ ...btnStyle, backgroundColor: "#075E54" }}>Apply Filters</button>
-        </div>
+        <input 
+          type="text"
+          placeholder="Search by name, email, or ID..."
+          style={{
+            width: "100%",
+            padding: "12px",
+            borderRadius: "6px",
+            border: "1px solid #ccc",
+            fontSize: "1rem",
+            boxSizing: "border-box",
+          }}
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
       </div>
 
-      {/* --- Table Section --- */}
-      <div style={{ 
-        flex: 1, 
-        backgroundColor: "white", 
-        borderRadius: "8px", 
-        border: "1px solid #ddd", 
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column"
-      }}>
-        {/* Table Header (Fixed) */}
+      {/* TABLE */}
+      <div style={{ flex: 1, backgroundColor: "white", borderRadius: "8px", border: "1px solid #ddd", overflow: "hidden" }}>
+
         <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
           <thead>
-            <tr style={{ backgroundColor: "#eee", textAlign: "left" }}>
-              <th style={{ ...headerStyle, width: "25%" }}>Name</th>
-              <th style={{ ...headerStyle, width: "25%" }}>Email</th>
-              <th style={{ ...headerStyle, width: "10%" }}>Role</th>
-              <th style={{ ...headerStyle, width: "10%" }}>Status</th>
-              <th style={{ ...headerStyle, width: "30%" }}>Joined Date</th>
+            <tr style={{ backgroundColor: "#eee" }}>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Joined Date</th>
             </tr>
           </thead>
         </table>
 
-        {/* Table Body (Scrollable) */}
         <div style={{ flex: 1, overflowY: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
             <tbody>
               {filteredUsers.map(user => (
-                <tr key={user.id} style={{ borderBottom: "1px solid #eee" }}>
-                  <td style={{ ...bodyStyle, width: "25%" }}>{user.username}</td>
-                  <td style={{ ...bodyStyle, width: "25%" }}>{user.email}</td>
-                  <td style={{ ...bodyStyle, width: "10%" }}>{user.is_staff ? "Admin" : "User"}</td>
-                  <td style={{ ...bodyStyle, width: "10%" }}>
-                    <span style={{ 
-                      padding: "4px 8px", 
-                      borderRadius: "12px", 
-                      fontSize: "0.85rem",
-                      backgroundColor: user.is_active ? "#d4edda" : "#f8d7da",
-                      color: user.is_active ? "#155724" : "#721c24"
-                    }}>
-                      {user.is_active ? "Active" : "Inactive"}
+                <tr key={user.id}>
+                  <td>{user.username}</td>
+                  <td>{user.email}</td>
+
+                  <td>
+                    {user.is_staff ? "admin" : "viewer"}
+                  </td>
+
+                  <td>
+                    <span>
+                      
+                      {user.is_active ? "active" : "inactive"}
                     </span>
                   </td>
-                    <td style={{ ...bodyStyle, width: "30%"}}>
-                      {new Date(user.date_joined).toLocaleString()}
-                    </td>
+
+                  <td>
+                    {new Date(user.date_joined).toLocaleString()}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+
       </div>
     </div>
   );

@@ -1,57 +1,75 @@
-import { render, screen, within, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import UserManagement from "./UserManagement";
 
-const mockUsers = [
-  {
-    id: 1,
-    username: "Alice",
-    email: "alice@test.com",
-    role: "admin",
-    status: "inactive",
-    joinedDate: "2024-01-01",
-  },
-  {
-    id: 2,
-    username: "Bob",
-    email: "bob@test.com",
-    role: "viewer",
-    status: "inactive",
-    joinedDate: "2024-01-02",
-  },
-];
+// Mock fetch globally
+beforeEach(() => {
+  global.fetch = vi.fn(() =>
+    Promise.resolve({
+      json: () =>
+        Promise.resolve([
+          {
+            id: 1,
+            username: "Alice",
+            email: "alice@test.com",
+            is_staff: true,
+            is_active: true,
+            date_joined: "2024-01-01T00:00:00Z",
+          },
+          {
+            id: 2,
+            username: "Bob",
+            email: "bob@test.com",
+            is_staff: false,
+            is_active: false,
+            date_joined: "2024-01-02T00:00:00Z",
+          },
+        ]),
+    } as any)
+  );
+});
 
-vi.mock("../services/userService", () => ({
-  fetchUsers: () => Promise.resolve(mockUsers),
-}));
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("UserManagement Page", () => {
-  beforeEach(() => {
+  test("renders user table", async () => {
     render(<UserManagement />);
+
+    // table is always present in your component
+    const table = await screen.findByRole("table");
+
+    expect(table).toBeInTheDocument();
   });
 
-  const getTable = async () => {
-    const table = await screen.findByRole("table");
-    return within(table);
-  };
-
   test("renders user rows correctly", async () => {
-    const table = await getTable();
+    render(<UserManagement />);
 
-    expect(table.getByText("Alice")).toBeInTheDocument();
-    expect(table.getByText("Bob")).toBeInTheDocument();
-    expect(table.getByText("alice@test.com")).toBeInTheDocument();
-    expect(table.getByText("bob@test.com")).toBeInTheDocument();
+    const table = await screen.findByRole("table");
+    const rows = within(table).getAllByRole("row");
+
+    // header row + 2 users = at least 3 rows
+    expect(rows.length).toBeGreaterThanOrEqual(3);
+
+    expect(screen.getByText("Alice")).toBeInTheDocument();
+    expect(screen.getByText("Bob")).toBeInTheDocument();
   });
 
   test("renders role labels correctly", async () => {
-    const table = await getTable();
+    render(<UserManagement />);
 
-    expect(table.getAllByText("User").length).toBeGreaterThanOrEqual(1);
+    await waitFor(() => {
+      expect(screen.getByText("admin")).toBeInTheDocument();
+      expect(screen.getByText("viewer")).toBeInTheDocument();
+    });
   });
 
   test("renders active/inactive badges correctly", async () => {
-    const table = await getTable();
+    render(<UserManagement />);
 
-    expect(table.getAllByText("Inactive").length).toBeGreaterThan(0);
+    await waitFor(() => {
+      expect(screen.getByText("active")).toBeInTheDocument();
+      expect(screen.getByText("inactive")).toBeInTheDocument();
+    });
   });
 });

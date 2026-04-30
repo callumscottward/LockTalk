@@ -1,7 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import UserManagement from "./UserManagement";
 
-// Mock fetch globally
 beforeEach(() => {
   global.fetch = vi.fn(() =>
     Promise.resolve({
@@ -33,23 +32,26 @@ afterEach(() => {
 });
 
 describe("UserManagement Page", () => {
-  test("renders user table", async () => {
+
+  test("renders user table (body table only)", async () => {
     render(<UserManagement />);
 
-    // table is always present in your component
-    const table = await screen.findByRole("table");
+    const tables = await screen.findAllByRole("table");
 
-    expect(table).toBeInTheDocument();
+    const bodyTable = tables[1]; // index 1 = tbody table
+
+    expect(bodyTable).toBeInTheDocument();
   });
 
   test("renders user rows correctly", async () => {
     render(<UserManagement />);
 
-    const table = await screen.findByRole("table");
-    const rows = within(table).getAllByRole("row");
+    const tables = await screen.findAllByRole("table");
+    const bodyTable = tables[1];
 
-    // header row + 2 users = at least 3 rows
-    expect(rows.length).toBeGreaterThanOrEqual(3);
+    const rows = within(bodyTable).getAllByRole("row");
+
+    expect(rows.length).toBe(2);
 
     expect(screen.getByText("Alice")).toBeInTheDocument();
     expect(screen.getByText("Bob")).toBeInTheDocument();
@@ -72,4 +74,5 @@ describe("UserManagement Page", () => {
       expect(screen.getByText("inactive")).toBeInTheDocument();
     });
   });
+
 });

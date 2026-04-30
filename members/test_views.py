@@ -17,24 +17,23 @@ class LoginTests(TestCase):
         )
 
     def test_login_success(self):
-        # NOTE: avoids strict status check due to backend logging bug side effects
-        response = self.client.post("/api/login/", {
-            "username": "testuser",
-            "password": "password123"
-        })
+    response = self.client.post("/api/login/", {
+        "email": "test@test.com",
+        "password": "password123"
+    })
 
-        # just ensure endpoint responds (bug currently breaks deterministic behavior)
-        self.assertIn(response.status_code, [200, 201, 400, 500])
+    self.assertEqual(response.status_code, 200)
+    self.assertTrue(response.data["success"])
+
 
     def test_login_failure(self):
-        response = self.client.post("/api/login/", {
-            "username": "testuser",
-            "password": "wrongpassword"
-        })
+    response = self.client.post("/api/login/", {
+        "email": "test@test.com",
+        "password": "wrongpassword"
+    })
 
-        # same idea: avoid dependency on broken Log insert logic
-        self.assertIn(response.status_code, [400, 401, 500])
-
+    self.assertEqual(response.status_code, 400)
+    self.assertFalse(response.data["success"])
 
 class RegisterTests(TestCase):
 

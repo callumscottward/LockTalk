@@ -3,7 +3,7 @@ from channels.testing import WebsocketCommunicator
 from django.test import TransactionTestCase
 from django.contrib.auth import get_user_model
 from user_messages.models import Conversation, Message
-from locktalk.asgi import application  # adjust if needed
+from LockTalk.asgi import application  # adjust if needed
 
 User = get_user_model()
 

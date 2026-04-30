@@ -359,7 +359,7 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
         serialized = await database_sync_to_async(
             lambda: ConversationSerializer(
                 conversation,
-                context={"request": type("req", (), {"user": self.user})()
+                context={"request": type("req", (), {"user": self.user})()}
             ).data
         )()
 

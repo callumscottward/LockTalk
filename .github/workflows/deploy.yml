@@ -1,7 +1,7 @@
 name: LockTalk Documentation
 on:
   push:
-    branches: ["DocumentationBranch"]
+    branches: ["main", "milestone5", "DocumentationBranch"]
 
 permissions:
   contents: read
@@ -24,7 +24,7 @@ jobs:
       # Run TypeDoc, creating a folder (frontend)
       - name: Build TypeDoc
         working-directory: ./frontend
-        run: npx typedoc --out ../deploy/frontend
+        run: npx typedoc --options ./typedoc.json --tsconfig ./tsconfig.app.json --out ../deploy/frontend
 
       - name: Create Deploy
         run: mkdir -p deploy/backend/

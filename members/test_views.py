@@ -18,7 +18,7 @@ class LoginTests(TestCase):
 
     def test_login_success(self):
         response = self.client.post("/api/login/", {
-            "username": "testuser",
+            "email": "test@test.com",
             "password": "password123"
         })
 
@@ -27,7 +27,7 @@ class LoginTests(TestCase):
 
     def test_login_failure(self):
         response = self.client.post("/api/login/", {
-            "username": "testuser",
+            "email": "test@test.com",
             "password": "wrongpassword"
         })
 
@@ -48,7 +48,6 @@ class RegisterTests(TestCase):
             "password2": "StrongPassword123"
         })
 
-        # backend may return 200 OR 400 depending on form validation/logging
         self.assertIn(response.status_code, [200, 400])
 
 
@@ -124,7 +123,6 @@ class MemberDetailTests(TestCase):
         )
 
     def test_member_detail(self):
-        # FIXED: matches urls.py exactly
         response = self.client.get(f"/api/members/details/{self.user.id}")
 
         self.assertEqual(response.status_code, 200)

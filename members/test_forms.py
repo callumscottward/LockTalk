@@ -2,7 +2,6 @@ from django.test import TestCase
 from members.forms import CustomUserCreationForm
 from django.contrib.auth.models import User
 
-
 class CustomUserCreationFormTest(TestCase):
 
     def test_valid_form(self):

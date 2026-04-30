@@ -2,7 +2,14 @@ from rest_framework import serializers
 from .models import Conversation, Message, Log
 from django.contrib.auth import get_user_model
 
+#Serializers
+#Creates serializers for messaging and conversation system
+#Customizes how fields are displayed
+
 class MessageSerializer(serializers.ModelSerializer):
+    #Serializer for messages
+    # makes the sender the users username
+     
     # We want the sender's username, not their ID number
     sender = serializers.ReadOnlyField(source='sender.username')
     sender_email = serializers.EmailField(source='sender.email', read_only=True)
@@ -15,6 +22,8 @@ class MessageSerializer(serializers.ModelSerializer):
 User = get_user_model()
 
 class CurrentUserSerializer(serializers.ModelSerializer):
+    #Serializer for current user
+
     is_staff = serializers.ReadOnlyField()
     class Meta:
         model = User
@@ -22,6 +31,10 @@ class CurrentUserSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email', 'is_staff']
 
 class ConversationSerializer(serializers.ModelSerializer):
+    #Serializer for conversation
+    #defines methods for getting time, last message, participation
+    #formats the representation for the conversation
+
     name = serializers.CharField(allow_blank=True)
     last_msg = serializers.SerializerMethodField()
     time = serializers.DateTimeField(source="latestUpdate")
@@ -96,7 +109,8 @@ class ConversationSerializer(serializers.ModelSerializer):
         return data
           
 class LogSerializer(serializers.ModelSerializer):
-
+    #Serializer for logs
+    
     class Meta:
         model = Log
         fields = ['id', 'event_type', 'sender', 'receiver', 'success', 'timestamp']

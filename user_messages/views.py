@@ -17,6 +17,9 @@ from .logs_rotate import rotate_logs_if_needed
 
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 
+#views
+#defines API views for conversation list, message list, message create list,
+#conversation create list, add member, delete member, conversation key, and log list
 User = get_user_model()
 
 ## @class ConversationListView

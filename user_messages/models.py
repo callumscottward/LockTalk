@@ -4,9 +4,14 @@ from django.contrib.auth import get_user_model
 import uuid
 from django.utils import timezone
 
+#models
+#Creates the models needed for messaging
+
 User = get_user_model()
 
 class Conversation(models.Model):
+    #conversation model defining participants, moderator, a boolean for group chat or not, the latest update, and retention days
+
     #Unique, randomly generated 128 but number that will be used to be more secure
     id = models.UUIDField(
         primary_key=True,
@@ -36,6 +41,7 @@ class Conversation(models.Model):
     retention_days = models.IntegerField(null=True, blank=True)
 
 class ConversationKey(models.Model):
+    #Creates keys from the conversation for encryption
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE)
     recipient = models.ForeignKey(User, on_delete=models.CASCADE)
     kem_ciphertext = models.JSONField()
@@ -46,6 +52,7 @@ class ConversationKey(models.Model):
         unique_together = ("conversation", "recipient")
 
 class Message(models.Model):
+    #Model for message including conversation, sender, content, message type, created at time, and priority
     class MessageType(models.TextChoices):
         NORMAL = "normal", "Normal"
         SYSTEM = "system", "System"
@@ -85,6 +92,7 @@ class Message(models.Model):
     )
 
 class Log(models.Model):
+    #Creates model for logs including event type, sender, receiver, timestamp, and success status
     EVENT_CHOICES = [
         ('SMS', 'SMS'),
         ('LOGIN', 'Login'),

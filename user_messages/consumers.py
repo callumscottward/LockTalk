@@ -8,10 +8,16 @@ from django.utils import timezone
 from django.db.models import Count
 from user_messages.models import Log
 
+##Consumers.py
+##This file contains the functions to create logs, delete messages, connect a user with their chats,
+##create/delete conversations, add users to messages, and send messages.
+##Overall function: Create processes to utilize chats and group chats
+
 User = get_user_model()
 
 @database_sync_to_async
 def create_msg_logs(conversation, user):
+    #creates logs when a message is sent
     other_participants = conversation.participants.exclude(id=user.id)
     for participant in other_participants:
         Log.objects.create(
@@ -23,6 +29,7 @@ def create_msg_logs(conversation, user):
 
 @database_sync_to_async
 def create_del_msg_logs(user):
+    #creates logs when a message is deleted
     Log.objects.create(
         event_type='DELETE_SMS',
         sender=user.username,
@@ -32,6 +39,7 @@ def create_del_msg_logs(user):
 
 @database_sync_to_async
 def create_del_convo_logs(user):
+    #creates logs when a conversation is deleted
     Log.objects.create(
         event_type='DELETE_CONVO',
         sender=user.username,
@@ -40,6 +48,7 @@ def create_del_convo_logs(user):
     )
 
 def delete_old_messages():
+    #Deletes old messages after 90 days
     from django.utils import timezone
     from datetime import timedelta
     from .models import Message
@@ -51,6 +60,7 @@ def delete_old_messages():
     ).delete()
 
 class ChatConsumer(AsyncWebsocketConsumer):
+    #connects a user to their chats
     async def connect(self):
         self.user = self.scope["user"]
         if self.user.is_anonymous:
@@ -154,6 +164,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await database_sync_to_async(delete_old_messages)()
 
     async def chat_message(self, event):
+        #sends message information to frontend
         await self.send(text_data=json.dumps({
             "type": "chat_message",
             "content": event["content"],
@@ -165,6 +176,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         }))
         
     async def delete_message(self, content):
+        #deletes a message
         user = self.scope["user"]
         message_id = content.get("message_id")
 
@@ -250,6 +262,7 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
         
 
     async def create_conversation(self, content):
+        #creates a conversation
         user = self.scope["user"]
         name = content.get("name", "")
         usernames = content.get("participants", [])
@@ -370,6 +383,7 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
         })
     
     async def add_member(self, content):
+        #adds a member to a group conversation
         User = get_user_model()
 
         username = content.get("username")
@@ -414,6 +428,7 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
             )
             
     async def remove_member(self, content):
+        #removes a member from a group conversation
         User = get_user_model()
 
         user_id = content.get("userId")

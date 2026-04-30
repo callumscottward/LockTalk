@@ -6,6 +6,8 @@ from .models import Log
 import csv
 import os
 
+#logs_rotate
+#Creates the function to rotate logs every 7 days
 
 def rotate_logs_if_needed():
     lock_key = "log_rotation_lock"

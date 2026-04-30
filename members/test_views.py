@@ -22,9 +22,8 @@ class LoginTests(TestCase):
             "password": "password123"
         })
 
-    self.assertEqual(response.status_code, 200)
-    self.assertTrue(response.data["success"])
-
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["success"])
 
     def test_login_failure(self):
         response = self.client.post("/api/login/", {
@@ -32,8 +31,9 @@ class LoginTests(TestCase):
             "password": "wrongpassword"
         })
 
-    self.assertEqual(response.status_code, 400)
-    self.assertFalse(response.data["success"])
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.data["success"])
+
 
 class RegisterTests(TestCase):
 

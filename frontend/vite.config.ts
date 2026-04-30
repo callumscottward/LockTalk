@@ -3,7 +3,6 @@ import react from '@vitejs/plugin-react-swc'
 import fs from 'node:fs'
 import path from 'node:path'
 
-// https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
@@ -14,6 +13,12 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+
+    test: {
+      globals: true,
+      environment: 'jsdom',
+    },
+
     server: {
       host: 'localhost',
       port: 5173,

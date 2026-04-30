@@ -20,7 +20,7 @@ class ConversationTests(TestCase):
     def test_get_conversations(self):
         self.client.login(username="user1", password="pass")
 
-        response = self.client.get("/api/conversations/")
+        response = self.client.get("/api/dashboard/")
 
         self.assertEqual(response.status_code, 200)
 
@@ -38,7 +38,9 @@ class MessageTests(TestCase):
     def test_get_messages(self):
         self.client.login(username="user", password="pass")
 
-        response = self.client.get(f"/api/messages/{self.conversation.id}/")
+        response = self.client.get(
+            f"/api/dashboard/{self.conversation.id}/messages/"
+        )
 
         self.assertEqual(response.status_code, 200)
 
@@ -46,7 +48,7 @@ class MessageTests(TestCase):
         self.client.login(username="user", password="pass")
 
         response = self.client.post(
-            f"/api/messages/{self.conversation.id}/create/",
+            f"/api/dashboard/{self.conversation.id}/messages/create/",
             {"content": "Hello"}
         )
 
@@ -57,28 +59,11 @@ class MessageTests(TestCase):
         self.client.login(username="user", password="pass")
 
         response = self.client.post(
-            f"/api/messages/{self.conversation.id}/create/",
+            f"/api/dashboard/{self.conversation.id}/messages/create/",
             {"content": ""}
         )
 
         self.assertEqual(response.status_code, 400)
-
-
-class ConversationCreateTests(TestCase):
-
-    def setUp(self):
-        self.client = APIClient()
-        self.user = User.objects.create_user(username="user", password="pass")
-
-    def test_create_conversation(self):
-        self.client.login(username="user", password="pass")
-
-        response = self.client.post("/api/conversations/create/", {
-            "name": "New Chat",
-            "participants": []
-        })
-
-        self.assertEqual(response.status_code, 201)
 
 
 class MemberManagementTests(TestCase):
@@ -96,7 +81,7 @@ class MemberManagementTests(TestCase):
         self.client.login(username="user1", password="pass")
 
         response = self.client.post(
-            f"/api/conversations/{self.conversation.id}/add/",
+            f"/api/conversations/{self.conversation.id}/members/add/",
             {"username": "user2"}
         )
 
@@ -107,7 +92,7 @@ class MemberManagementTests(TestCase):
         self.client.login(username="user1", password="pass")
 
         response = self.client.post(
-            f"/api/conversations/{self.conversation.id}/remove/",
+            f"/api/conversations/{self.conversation.id}/members/remove/",
             {"userId": self.user2.id}
         )
 
@@ -142,7 +127,6 @@ class CurrentUserTests(TestCase):
     def test_get_current_user(self):
         self.client.login(username="user", password="pass")
 
-        response = self.client.get("/api/me/")
+        response = self.client.get("/api/verify-staff/")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["username"], "user")

@@ -3,24 +3,14 @@ import userEvent from "@testing-library/user-event"
 import { vi } from "vitest"
 import Login from "./Login"
 
+beforeEach(() => {
+  vi.resetAllMocks()
 
-// Mock fetch
-global.fetch = vi.fn(() =>
-  Promise.resolve({
-    ok: true,
-    json: () => Promise.resolve({ success: true }),
+  Object.defineProperty(window, "location", {
+    value: { href: "" },
+    writable: true,
   })
-) as any
-
-
-// Mock window.location
-Object.defineProperty(window, "location", {
-  value: {
-    href: "",
-  },
-  writable: true,
 })
-
 
 describe("Login Page", () => {
 
@@ -30,65 +20,73 @@ describe("Login Page", () => {
     expect(screen.getByText(/login/i)).toBeInTheDocument()
   })
 
-
-  it("allows typing username and password", async () => {
+  it("allows typing email and password", async () => {
     render(<Login />)
 
-    const username = screen.getByPlaceholderText(/username|email/i)
-    const password = screen.getByPlaceholderText(/password/i)
+    const email = screen.getByLabelText(/email/i)
+    const password = screen.getByLabelText(/password/i)
 
-    await userEvent.type(username, "testuser")
+    await userEvent.type(email, "test@test.com")
     await userEvent.type(password, "password123")
 
-    expect(username).toHaveValue("testuser")
+    expect(email).toHaveValue("test@test.com")
     expect(password).toHaveValue("password123")
   })
 
-
   it("submits login form", async () => {
+    global.fetch = vi.fn(() =>
+      Promise.resolve({
+        json: () => Promise.resolve({ success: true, message: "ok" }),
+      })
+    ) as any
+
     render(<Login />)
 
-    const username = screen.getByPlaceholderText(/username|email/i)
-    const password = screen.getByPlaceholderText(/password/i)
-    const button = screen.getByRole("button", { name: /login/i })
+    await userEvent.type(screen.getByLabelText(/email/i), "test@test.com")
+    await userEvent.type(screen.getByLabelText(/password/i), "pass")
 
-    await userEvent.type(username, "testuser")
-    await userEvent.type(password, "password123")
-    await userEvent.click(button)
+    await userEvent.click(screen.getByRole("button", { name: /login/i }))
 
     await waitFor(() => {
       expect(fetch).toHaveBeenCalled()
     })
   })
-
 
   it("redirects after successful login", async () => {
+    global.fetch = vi.fn(() =>
+      Promise.resolve({
+        json: () => Promise.resolve({ success: true, message: "ok" }),
+      })
+    ) as any
+
     render(<Login />)
 
-    const button = screen.getByRole("button", { name: /login/i })
-    await userEvent.click(button)
+    await userEvent.type(screen.getByLabelText(/email/i), "test@test.com")
+    await userEvent.type(screen.getByLabelText(/password/i), "pass")
+
+    await userEvent.click(screen.getByRole("button", { name: /login/i }))
 
     await waitFor(() => {
-      expect(window.location.href).not.toBe("")
+      expect(window.location.href).toBe("/dashboard")
     })
   })
-
 
   it("shows error on failed login", async () => {
-    (fetch as any).mockImplementationOnce(() =>
+    global.fetch = vi.fn(() =>
       Promise.resolve({
-        ok: false,
+        json: () => Promise.resolve({ success: false, message: "Invalid" }),
       })
-    )
+    ) as any
 
     render(<Login />)
 
-    const button = screen.getByRole("button", { name: /login/i })
-    await userEvent.click(button)
+    await userEvent.type(screen.getByLabelText(/email/i), "wrong@test.com")
+    await userEvent.type(screen.getByLabelText(/password/i), "badpass")
+
+    await userEvent.click(screen.getByRole("button", { name: /login/i }))
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalled()
+      expect(screen.getByText(/invalid/i)).toBeInTheDocument()
     })
   })
-
 })

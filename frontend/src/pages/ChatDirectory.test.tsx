@@ -1,21 +1,56 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { vi, beforeEach, describe, test, expect } from 'vitest';
 import ChatDirectory from './ChatDirectory';
 
 describe('ChatDirectory', () => {
-  test('renders page title', () => {
-    render(<ChatDirectory />);
-    expect(screen.getByText(/Chat Directory/i)).toBeInTheDocument();
+  beforeEach(() => {
+    vi.resetAllMocks();
+
+    global.fetch = vi.fn(() =>
+      Promise.resolve({
+        json: () =>
+          Promise.resolve([
+            {
+              id: '1',
+              name: 'User 1',
+              is_group: false,
+              participants: [{ id: 1, username: 'User 1' }],
+              time: new Date().toISOString(),
+            },
+            {
+              id: '2',
+              name: 'User 2',
+              is_group: false,
+              participants: [{ id: 2, username: 'User 2' }],
+              time: new Date().toISOString(),
+            },
+          ]),
+      })
+    ) as any;
+
+    global.WebSocket = vi.fn(() => ({
+      send: vi.fn(),
+      close: vi.fn(),
+      readyState: 1,
+    })) as any;
   });
 
-  test('renders initial chat rows', () => {
+  test('renders page title', async () => {
     render(<ChatDirectory />);
-
-    expect(screen.getByText('User 1')).toBeInTheDocument();
-    expect(screen.getByText('User 2')).toBeInTheDocument();
+    expect(await screen.findByText(/Chat Directory/i)).toBeInTheDocument();
   });
 
-  test('search filters chat list', () => {
+  test('renders chat rows after fetch', async () => {
     render(<ChatDirectory />);
+
+    expect(await screen.findByText('User 1')).toBeInTheDocument();
+    expect(await screen.findByText('User 2')).toBeInTheDocument();
+  });
+
+  test('search filters chat list', async () => {
+    render(<ChatDirectory />);
+
+    await screen.findByText('User 1');
 
     const searchInput = screen.getByPlaceholderText(/Search by name/i);
     fireEvent.change(searchInput, { target: { value: 'User 1' } });
@@ -24,24 +59,24 @@ describe('ChatDirectory', () => {
     expect(screen.queryByText('User 2')).not.toBeInTheDocument();
   });
 
-  test('reset button clears search', () => {
+  test('reset button clears search', async () => {
     render(<ChatDirectory />);
 
-    const searchInput = screen.getByPlaceholderText(/Search by name/i);
+    const searchInput = await screen.findByPlaceholderText(/Search by name/i);
     fireEvent.change(searchInput, { target: { value: 'User 1' } });
 
     const resetButton = screen.getByText(/Reset/i);
     fireEvent.click(resetButton);
 
-    expect(searchInput.value).toBe('');
+    expect(searchInput).toHaveValue('');
   });
 
-  test('delete removes a chat after confirmation', () => {
-    window.confirm = jest.fn(() => true);
+  test('delete triggers confirm dialog', async () => {
+    window.confirm = vi.fn(() => true);
 
     render(<ChatDirectory />);
 
-    const deleteButtons = screen.getAllByText(/Delete/i);
+    const deleteButtons = await screen.findAllByText(/Delete/i);
     fireEvent.click(deleteButtons[0]);
 
     expect(window.confirm).toHaveBeenCalled();

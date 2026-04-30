@@ -1,5 +1,6 @@
 import json
 from channels.testing import WebsocketCommunicator
+from channels.db import database_sync_to_async
 from django.test import TransactionTestCase
 from django.contrib.auth import get_user_model
 from user_messages.models import Conversation, Message
@@ -45,14 +46,19 @@ class ChatConsumerTest(TransactionTestCase):
         connected, _ = await communicator.connect()
         self.assertTrue(connected)
 
+        # Send message
         await communicator.send_json_to({
             "message": "Hello"
         })
 
+        # Receive websocket response
         response = await communicator.receive_json_from()
 
         self.assertEqual(response["type"], "chat_message")
+        self.assertEqual(response["content"], "Hello")
 
-        self.assertEqual(Message.objects.count(), 1)
+        # ✅ FIX: ORM access must be async-safe
+        message_count = await database_sync_to_async(Message.objects.count)()
+        self.assertEqual(message_count, 1)
 
         await communicator.disconnect()

@@ -2,14 +2,18 @@ from rest_framework import serializers
 from .models import Conversation, Message, Log
 from django.contrib.auth import get_user_model
 
-#Serializers
-#Creates serializers for messaging and conversation system
-#Customizes how fields are displayed
+## @file serializers.py
+#  @brief DRF serializers for the messaging system.
+#
+#  Handles serialization for messages, conversations, users, and logs,
+#  including custom formatting for nested and computed fields.
 
+## @class MessageSerializer
+#  @brief Serializes Message objects for API responses.
+#
+#  @details Includes sender username and email instead of raw user ID.
 class MessageSerializer(serializers.ModelSerializer):
-    #Serializer for messages
-    # makes the sender the users username
-     
+  
     # We want the sender's username, not their ID number
     sender = serializers.ReadOnlyField(source='sender.username')
     sender_email = serializers.EmailField(source='sender.email', read_only=True)
@@ -20,20 +24,23 @@ class MessageSerializer(serializers.ModelSerializer):
 
 
 User = get_user_model()
-
+## @class CurrentUserSerializer
+#  @brief Serializes the currently authenticated user.
 class CurrentUserSerializer(serializers.ModelSerializer):
-    #Serializer for current user
-
     is_staff = serializers.ReadOnlyField()
     class Meta:
         model = User
         # Staff stuff for admin only
         fields = ['id', 'username', 'email', 'is_staff']
 
+## @class ConversationSerializer
+#  @brief Serializes Conversation objects with computed fields.
+#
+#  Adds:
+#  - last message preview
+#  - last update timestamp
+#  - participant summaries
 class ConversationSerializer(serializers.ModelSerializer):
-    #Serializer for conversation
-    #defines methods for getting time, last message, participation
-    #formats the representation for the conversation
 
     name = serializers.CharField(allow_blank=True)
     last_msg = serializers.SerializerMethodField()
@@ -58,16 +65,22 @@ class ConversationSerializer(serializers.ModelSerializer):
         return other.username if other else "Unknown User"
         #return other.name if other else "Unknown User"*/ """
 
+    ## @brief Retrieves the last message content.
+    #  @param obj Conversation instance
     def get_last_msg(self, obj):
         # We use .content because that's what is in your Message model
         last = obj.messages.order_by("-created_at").first()
         return last.content if last else ""
 
+    ## @brief Retrieves timestamp of last message.
+    #  @param obj Conversation instance
     def get_time(self, obj):
         # We use .created_at because that's what is in your Message model
         last = obj.messages.order_by("-created_at").first()
         return last.created_at if last else None
     
+    ## @brief Returns serialized participant list.
+    #  @param obj Conversation instance
     def get_participants(self, obj):
         return [
             {
@@ -92,6 +105,11 @@ class ConversationSerializer(serializers.ModelSerializer):
 
       #  return data
     
+    ## @brief Custom representation for conversation naming logic.
+    #
+    #  @details Falls back to:
+    #  - group label for group chats
+    #  - other participant username for direct chats
     def to_representation(self, instance):
         data = super().to_representation(instance)
 
@@ -107,10 +125,12 @@ class ConversationSerializer(serializers.ModelSerializer):
                 data["name"] = other.username if other else "Unknown User"
 
         return data
-          
+
+## @class LogSerializer
+#  @brief Serializes system log entries for audit tracking.        
 class LogSerializer(serializers.ModelSerializer):
     #Serializer for logs
-    
+
     class Meta:
         model = Log
         fields = ['id', 'event_type', 'sender', 'receiver', 'success', 'timestamp']

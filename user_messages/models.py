@@ -1,14 +1,20 @@
+## @file models.py
+#  @brief Messaging system database models.
+#
+#  @details Defines core messaging structures including conversations, messages, encryption keys, and system logs.
+
 from django.db import models
 from django.conf import settings
 from django.contrib.auth import get_user_model
 import uuid
 from django.utils import timezone
 
-#models
-#Creates the models needed for messaging
-
 User = get_user_model()
 
+## @class Conversation
+#  @brief Represents a chat conversation between users.
+#
+#  @details Supports both direct and group chats, including moderator control, participant tracking, and update metadata.
 class Conversation(models.Model):
     #conversation model defining participants, moderator, a boolean for group chat or not, the latest update, and retention days
 
@@ -40,6 +46,8 @@ class Conversation(models.Model):
 
     retention_days = models.IntegerField(null=True, blank=True)
 
+## @class ConversationKey
+#  @brief Stores encryption keys for secure conversation messaging.
 class ConversationKey(models.Model):
     #Creates keys from the conversation for encryption
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE)
@@ -51,8 +59,11 @@ class ConversationKey(models.Model):
     class Meta:
         unique_together = ("conversation", "recipient")
 
+## @class Message
+#  @brief Represents a message sent inside a conversation.
 class Message(models.Model):
-    #Model for message including conversation, sender, content, message type, created at time, and priority
+    ## @class MessageType
+    #  @brief Types of messages supported
     class MessageType(models.TextChoices):
         NORMAL = "normal", "Normal"
         SYSTEM = "system", "System"
@@ -91,8 +102,9 @@ class Message(models.Model):
         default="normal"
     )
 
+## @class Log
+#  @brief Stores system audit logs for user actions.
 class Log(models.Model):
-    #Creates model for logs including event type, sender, receiver, timestamp, and success status
     EVENT_CHOICES = [
         ('SMS', 'SMS'),
         ('LOGIN', 'Login'),

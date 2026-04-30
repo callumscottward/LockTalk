@@ -17,9 +17,16 @@ from .logs_rotate import rotate_logs_if_needed
 
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 
-#views
-#defines API views for conversation list, message list, message create list,
-#conversation create list, add member, delete member, conversation key, and log list
+## @file views.py
+#  @brief REST API views for the messaging system.
+#
+#  Provides endpoints for:
+#  - Conversations (list/create/admin access)
+#  - Messages (list/create)
+#  - Membership management (add/remove users)
+#  - Encryption keys
+#  - Logs and user/admin utilities
+
 User = get_user_model()
 
 ## @class ConversationListView

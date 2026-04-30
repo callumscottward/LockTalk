@@ -6,9 +6,18 @@ from .models import Log
 import csv
 import os
 
-#logs_rotate
-#Creates the function to rotate logs every 7 days
+## @file log_rotation.py
+#  @brief Handles periodic log rotation and archival.
+#
+#  This module is responsible for:
+#  - Rotating logs every 7 days
+#  - Preventing duplicate execution using cache locks
+#  - Exporting old logs to CSV files
+#  - Deleting archived logs from the database
 
+
+## @brief Rotates logs older than 7 days into a CSV archive.
+#  @return None
 def rotate_logs_if_needed():
     lock_key = "log_rotation_lock"
     last_run_key = "last_log_rotation"

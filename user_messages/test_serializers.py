@@ -8,11 +8,22 @@ from user_messages.serializers import (
     LogSerializer
 )
 
+## @file test_serializers.py
+#  @brief Unit tests for DRF serializers in the messaging system.
+#
+#  Covers:
+#  - Message serialization
+#  - Conversation serialization logic (participants, fallback names, last message)
+#  - Current user serialization
+#  - Log serialization
+
 User = get_user_model()
 
-
+## @class SerializerTest
+#  @brief Tests for messaging system serializers.
 class SerializerTest(TestCase):
 
+    ## @brief Sets up users, conversation, and message for testing.
     def setUp(self):
         self.user1 = User.objects.create_user(
             username="user1",
@@ -34,6 +45,7 @@ class SerializerTest(TestCase):
             content="Hello"
         )
 
+    ## @brief Validates MessageSerializer output.
     def test_message_serializer(self):
         serializer = MessageSerializer(self.message)
         data = serializer.data
@@ -42,6 +54,7 @@ class SerializerTest(TestCase):
         self.assertEqual(data["sender_email"], "user1@test.com")
         self.assertEqual(data["content"], "Hello")
 
+    ## @brief Ensures participants are correctly serialized.
     def test_conversation_serializer_participants(self):
         serializer = ConversationSerializer(
             self.conversation,
@@ -51,6 +64,7 @@ class SerializerTest(TestCase):
 
         self.assertEqual(len(data["participants"]), 2)
 
+    ## @brief Validates last message extraction logic.
     def test_conversation_last_message(self):
         serializer = ConversationSerializer(
             self.conversation,
@@ -60,6 +74,7 @@ class SerializerTest(TestCase):
 
         self.assertEqual(data["last_msg"], "Hello")
 
+    ## @brief Ensures conversation name fallback logic works.
     def test_conversation_name_fallback(self):
         serializer = ConversationSerializer(
             self.conversation,
@@ -70,6 +85,7 @@ class SerializerTest(TestCase):
         # Since it's direct chat, should show other user's username
         self.assertEqual(data["name"], "user2")
 
+    ## @brief Validates CurrentUserSerializer output.
     def test_current_user_serializer(self):
         serializer = CurrentUserSerializer(self.user1)
         data = serializer.data
@@ -77,6 +93,7 @@ class SerializerTest(TestCase):
         self.assertEqual(data["username"], "user1")
         self.assertIn("is_staff", data)
 
+    ## @brief Validates LogSerializer output.
     def test_log_serializer(self):
         log = Log.objects.create(
             event_type="LOGIN",

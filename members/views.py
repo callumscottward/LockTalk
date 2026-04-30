@@ -56,9 +56,10 @@ class login_api(APIView):
                 }
             })
 
+        
         Log.objects.create(
             event_type='LOGIN',
-            sender=email,
+            sender=email or "UNKNOWN",
             receiver='SYSTEM',
             success=False
         )

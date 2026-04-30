@@ -27,10 +27,10 @@ class LoginTests(TestCase):
 
 
     def test_login_failure(self):
-    response = self.client.post("/api/login/", {
-        "email": "test@test.com",
-        "password": "wrongpassword"
-    })
+        response = self.client.post("/api/login/", {
+            "email": "test@test.com",
+            "password": "wrongpassword"
+        })
 
     self.assertEqual(response.status_code, 400)
     self.assertFalse(response.data["success"])

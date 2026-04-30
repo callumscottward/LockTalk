@@ -17,6 +17,7 @@ interface Message {
   encrypted_content: { iv: Array<number>, data: Array<number> };
   is_me: boolean;
   timestamp?: string;
+  priority?: "normal" | "sensitive" | "highly_sensitive";
 }
 
 /* Can be used for searching */
@@ -104,6 +105,7 @@ export default function Messages() {
   const currentUserIdRef = useRef<number | null>(null);
   const currentUserEmailRef = useRef<string | null>(null);
   const currentConversationId = useRef<string | null>(null);
+  const [messagePriority, setMessagePriority] = useState<"normal" | "sensitive" | "highly_sensitive">("normal");
 
   const authHeaders = {
     "Content-Type": "application/json",
@@ -271,6 +273,7 @@ export default function Messages() {
             // the .trim().toLowerCase() ensures they are identical
             is_me: data.sender_email.trim().toLowerCase() === currentUserEmail?.trim().toLowerCase(),
             timestamp: data.timestamp || new Date().toISOString(),
+            priority: data.priority || "normal", //added
           }
         ]);
 
@@ -350,8 +353,9 @@ export default function Messages() {
 
     const encryptedMessage = await encryptMessage(messageInput);
 
-    socketRef.current.send(JSON.stringify({ message: encryptedMessage }));
+    socketRef.current.send(JSON.stringify({ message: encryptedMessage, priority: messagePriority }));
     setMessageInput("");
+    setMessagePriority("normal");
   };
 
   const handleDeleteMessage = (messageId: number) => {
@@ -480,6 +484,7 @@ export default function Messages() {
             encrypted_content: content,
             is_me: msg.sender.trim() === currentUserEmail.trim(),
             timestamp: msg.created_at,
+            priority: msg.priority || "normal",
           };
         });
 
@@ -545,6 +550,17 @@ export default function Messages() {
     setSearchQuery("");
     setConversationName("");
     setIsModalOpen(false);
+  };
+
+
+  const getPriorityBorder = (msg: Message) => {
+    if (msg.priority === "highly_sensitive") {
+      return "3px solid #ff4d4d"; // red outline
+  }
+    if (msg.priority === "sensitive") {
+      return "3px solid #ffa500"; // orange outline
+  }
+    return "none";
   };
 
   return (
@@ -841,6 +857,7 @@ export default function Messages() {
                       style={{
                         background: msg.is_me ? "#075E54" : "#d0d0d0ff",
                         color: msg.is_me ? "#fff" : "#000",
+                        border: getPriorityBorder(msg),
                         padding: "8px 12px",
                         paddingRight: hoveredMessageId === msg.id && msg.is_me ? "32px" : "12px",
                         paddingLeft: hoveredMessageId === msg.id && !msg.is_me && activeChat?.moderator === currentUserId && activeChat?.is_group ? "32px" : "12px",
@@ -893,6 +910,15 @@ export default function Messages() {
 
         {/* Input */}
         <div style={{ padding: "10px", borderTop: "1px solid #ddd", display: "flex", gap: "10px" }}>
+          <select
+            value={messagePriority}
+            onChange={(e) => setMessagePriority(e.target.value as any)}
+            style={{ padding: "6px", borderRadius: "6px" }}
+          >
+            <option value="normal">Normal</option>
+            <option value="sensitive">Sensitive</option>
+            <option value="highly_sensitive">Highly Sensitive</option>
+          </select>
           <input
             style={{ flex: 1, padding: "10px", borderRadius: "20px", border: "1px solid #075E54" }}
             placeholder="Type a message..."

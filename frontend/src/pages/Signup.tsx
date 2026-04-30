@@ -79,8 +79,9 @@ export default function Signup() {
         style={{ display: "flex", flexDirection: "column", gap: "15px" }}
       >
         <div>
-          <label>Email:</label>
+          <label htmlFor="email">Email:</label>
           <input
+            id="email"
             type="email"
             required
             value={email}
@@ -95,8 +96,9 @@ export default function Signup() {
         </div>
 
         <div>
-          <label>First Name:</label>
+          <label htmlFor="firstName">First Name:</label>
           <input
+            id="firstName"
             type="text"
             required
             value={firstName}
@@ -111,8 +113,9 @@ export default function Signup() {
         </div>
 
         <div>
-          <label>Last Name:</label>
+          <label htmlFor="lastName">Last Name:</label>
           <input
+            id="lastName"
             type="text"
             required
             value={lastName}
@@ -127,8 +130,9 @@ export default function Signup() {
         </div>
 
         <div>
-          <label>Password:</label>
+          <label htmlFor="password">Password:</label>
           <input
+            id="password"
             type="password"
             required
             value={password1}
@@ -143,8 +147,9 @@ export default function Signup() {
         </div>
 
         <div>
-          <label>Confirm Password:</label>
+          <label htmlFor="confirmPassword">Confirm Password:</label>
           <input
+            id="confirmPassword"
             type="password"
             required
             value={password2}

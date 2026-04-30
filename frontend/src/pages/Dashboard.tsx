@@ -11,6 +11,20 @@ import {
   restoreConversationKey,
 } from '../utilities/MessageCryptography';
 
+/**
+ * @name Dashboard
+ * ## Dashboard Compoenent
+ * This serves as the main "homepage" of the application,
+ * where users can check messages in conversations they're
+ * members of, create new conversations, modify existing ones,
+ * and route to other menus of the application such as User
+ * Management or (if the user is an admin) Logs and the
+ * Chat Directory. If the user is logged in on their browser
+ * instance, this is also where the root URL navigates to.
+ * @category Pages
+ * @returns The primary application dashboard site.
+ */
+
 interface Conversation {
   id: string;
   name: string;

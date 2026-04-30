@@ -1,40 +1,82 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { vi } from 'vitest';
 import UserManagement from './UserManagement';
 
+const mockUsers = [
+  {
+    id: 1,
+    username: 'Alice',
+    email: 'alice@example.com',
+    is_staff: true,
+    is_active: true,
+    date_joined: '2024-01-01T10:00:00Z',
+  },
+  {
+    id: 2,
+    username: 'Bob',
+    email: 'bob@example.com',
+    is_staff: false,
+    is_active: false,
+    date_joined: '2024-02-01T10:00:00Z',
+  },
+];
+
+beforeEach(() => {
+  vi.resetAllMocks();
+
+  global.fetch = vi.fn(() =>
+    Promise.resolve({
+      json: () => Promise.resolve(mockUsers),
+    })
+  ) as any;
+});
+
 describe('UserManagement Page', () => {
-  test('renders page title', () => {
+
+  it('renders page title', () => {
     render(<UserManagement />);
     expect(screen.getByText(/User Management/i)).toBeInTheDocument();
   });
 
-  test('renders search input and updates value', () => {
+  it('loads and displays users', async () => {
     render(<UserManagement />);
-    
-    const searchInput = screen.getByPlaceholderText(/Search by name/i);
-    fireEvent.change(searchInput, { target: { value: 'Alice' } });
 
-    expect(searchInput.value).toBe('Alice');
+    expect(await screen.findByText('Alice')).toBeInTheDocument();
+    expect(await screen.findByText('Bob')).toBeInTheDocument();
+
+    expect(screen.getByText('alice@example.com')).toBeInTheDocument();
+    expect(screen.getByText('bob@example.com')).toBeInTheDocument();
   });
 
-  test('renders table headers', () => {
+  it('filters users by search input', async () => {
     render(<UserManagement />);
-    
-    expect(screen.getByText('Name')).toBeInTheDocument();
-    expect(screen.getByText('Email')).toBeInTheDocument();
-    expect(screen.getByText('Role')).toBeInTheDocument();
+
+    await screen.findByText('Alice');
+
+    const search = screen.getByPlaceholderText(/search by name/i);
+
+    await userEvent.type(search, 'Alice');
+
+    expect(screen.getByText('Alice')).toBeInTheDocument();
+    expect(screen.queryByText('Bob')).not.toBeInTheDocument();
   });
 
-  test('renders users from mock data', () => {
+  it('renders role labels correctly', async () => {
     render(<UserManagement />);
 
-    expect(screen.getByText('User 1')).toBeInTheDocument();
-    expect(screen.getByText('user1@example.com')).toBeInTheDocument();
+    await screen.findByText('Alice');
+
+    expect(screen.getByText('Admin')).toBeInTheDocument();
+    expect(screen.getByText('User')).toBeInTheDocument();
   });
 
-  test('status badge shows correct styling text', () => {
+  it('renders active/inactive badges', async () => {
     render(<UserManagement />);
 
-    expect(screen.getAllByText('Active')[0]).toBeInTheDocument();
-    expect(screen.getAllByText('Inactive')[0]).toBeInTheDocument();
+    await screen.findByText('Alice');
+
+    expect(screen.getByText('Active')).toBeInTheDocument();
+    expect(screen.getByText('Inactive')).toBeInTheDocument();
   });
 });

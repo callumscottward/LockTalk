@@ -1,33 +1,62 @@
-import { vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import ChatDirectory from './ChatDirectory';
 
-// Proper WebSocket mock
+// -----------------------------
+// WebSocket MOCK (IMPORTANT)
+// -----------------------------
 class MockWebSocket {
-  static CONNECTING = 0;
-  static OPEN = 1;
-  static CLOSING = 2;
-  static CLOSED = 3;
-
-  constructor(url: string) {
-    this.url = url;
-    this.readyState = MockWebSocket.OPEN;
-
-    // simulate async open
+  constructor() {
+    this.readyState = 1;
     setTimeout(() => {
       this.onopen?.(new Event('open'));
     }, 0);
   }
-
-  url: string;
-  readyState: number;
 
   send = vi.fn();
   close = vi.fn();
 
   onopen: ((event: Event) => void) | null = null;
   onmessage: ((event: MessageEvent) => void) | null = null;
-  onerror: ((event: Event) => void) | null = null;
   onclose: ((event: Event) => void) | null = null;
+  onerror: ((event: Event) => void) | null = null;
+
+  readyState: number;
 }
 
-// attach globally
 global.WebSocket = MockWebSocket as any;
+
+// -----------------------------
+// FETCH MOCK
+// -----------------------------
+beforeEach(() => {
+  global.fetch = vi.fn(() =>
+    Promise.resolve({
+      json: () =>
+        Promise.resolve([
+          {
+            id: 1,
+            name: 'Test Chat',
+            last_message: 'Hello',
+          },
+        ]),
+    })
+  ) as any;
+});
+
+// -----------------------------
+// TESTS
+// -----------------------------
+describe('ChatDirectory', () => {
+
+  it('renders page title', () => {
+    render(<ChatDirectory />);
+    expect(screen.getByText(/chat/i)).toBeInTheDocument();
+  });
+
+  it('renders chat rows after fetch', async () => {
+    render(<ChatDirectory />);
+    expect(await screen.findByText(/test chat/i)).toBeInTheDocument();
+  });
+
+});

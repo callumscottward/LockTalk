@@ -1,62 +1,46 @@
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import ChatDirectory from './ChatDirectory';
+import { render, screen, waitFor } from "@testing-library/react";
+import { vi } from "vitest";
+import ChatDirectory from "./ChatDirectory";
 
-// -----------------------------
-// WebSocket MOCK (IMPORTANT)
-// -----------------------------
-class MockWebSocket {
-  constructor() {
-    this.readyState = 1;
-    setTimeout(() => {
-      this.onopen?.(new Event('open'));
-    }, 0);
-  }
+// ✅ Mock WebSocket properly (THIS fixes your earlier crash)
+global.WebSocket = vi.fn(() => ({
+  send: vi.fn(),
+  close: vi.fn(),
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+})) as any;
 
-  send = vi.fn();
-  close = vi.fn();
+// ✅ Mock fetch with correct structure
+global.fetch = vi.fn(() =>
+  Promise.resolve({
+    json: () =>
+      Promise.resolve([
+        {
+          id: 1,
+          name: "Test Chat",
+          participants: [{ username: "Alice" }],
+          last_message_time: new Date().toISOString(),
+        },
+      ]),
+  })
+) as any;
 
-  onopen: ((event: Event) => void) | null = null;
-  onmessage: ((event: MessageEvent) => void) | null = null;
-  onclose: ((event: Event) => void) | null = null;
-  onerror: ((event: Event) => void) | null = null;
+describe("ChatDirectory", () => {
 
-  readyState: number;
-}
-
-global.WebSocket = MockWebSocket as any;
-
-// -----------------------------
-// FETCH MOCK
-// -----------------------------
-beforeEach(() => {
-  global.fetch = vi.fn(() =>
-    Promise.resolve({
-      json: () =>
-        Promise.resolve([
-          {
-            id: 1,
-            name: 'Test Chat',
-            last_message: 'Hello',
-          },
-        ]),
-    })
-  ) as any;
-});
-
-// -----------------------------
-// TESTS
-// -----------------------------
-describe('ChatDirectory', () => {
-
-  it('renders page title', () => {
+  it("renders page title", () => {
     render(<ChatDirectory />);
-    expect(screen.getByText(/chat/i)).toBeInTheDocument();
+
+    // ✅ more specific (fixes duplicate error)
+    expect(screen.getByRole("heading", { name: /chat directory/i }))
+      .toBeInTheDocument();
   });
 
-  it('renders chat rows after fetch', async () => {
+  it("renders chat rows after fetch", async () => {
     render(<ChatDirectory />);
-    expect(await screen.findByText(/test chat/i)).toBeInTheDocument();
+
+    // ✅ waits for async data
+    expect(await screen.findByText(/test chat/i))
+      .toBeInTheDocument();
   });
 
 });

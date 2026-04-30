@@ -1,16 +1,21 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { vi } from "vitest";
 import ChatDirectory from "./ChatDirectory";
 
-// Mock WebSocket properly 
-global.WebSocket = vi.fn(() => ({
-  send: vi.fn(),
-  close: vi.fn(),
-  addEventListener: vi.fn(),
-  removeEventListener: vi.fn(),
-})) as any;
+// roper WebSocket mock
+class MockWebSocket {
+  url: string;
+  constructor(url: string) {
+    this.url = url;
+  }
+  send = vi.fn();
+  close = vi.fn();
+  addEventListener = vi.fn();
+  removeEventListener = vi.fn();
+}
+global.WebSocket = MockWebSocket as any;
 
-// Mock fetch with correct structure
+// Mock fetch with correct shape
 global.fetch = vi.fn(() =>
   Promise.resolve({
     json: () =>
@@ -30,17 +35,17 @@ describe("ChatDirectory", () => {
   it("renders page title", () => {
     render(<ChatDirectory />);
 
-    // more specific (fixes duplicate error)
-    expect(screen.getByRole("heading", { name: /chat directory/i }))
-      .toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /chat directory/i })
+    ).toBeInTheDocument();
   });
 
   it("renders chat rows after fetch", async () => {
     render(<ChatDirectory />);
 
-    // waits for async data
-    expect(await screen.findByText(/test chat/i))
-      .toBeInTheDocument();
+    expect(
+      await screen.findByText(/test chat/i)
+    ).toBeInTheDocument();
   });
 
 });

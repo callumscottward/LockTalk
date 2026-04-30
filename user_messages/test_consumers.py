@@ -1,16 +1,15 @@
-import json
 from channels.testing import WebsocketCommunicator
 from django.test import TransactionTestCase
 from django.contrib.auth import get_user_model
 from user_messages.models import Conversation, Message
-from LockTalk.asgi import application  # adjust if needed
+from LockTalk.asgi import application
 
 User = get_user_model()
 
 
 class ChatConsumerTest(TransactionTestCase):
 
-    async def asyncSetUp(self):
+    def setUp(self):
         self.user = User.objects.create_user(
             username="testuser",
             password="password"
@@ -48,7 +47,6 @@ class ChatConsumerTest(TransactionTestCase):
         response = await communicator.receive_json_from()
 
         self.assertEqual(response["type"], "chat_message")
-
         self.assertEqual(Message.objects.count(), 1)
 
         await communicator.disconnect()

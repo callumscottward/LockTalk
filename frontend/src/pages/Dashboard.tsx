@@ -1,6 +1,15 @@
 import React from 'react';
 import { useState, useEffect, useRef } from 'react';
-import { encryptMessage, decryptMessage, receiveKemHandshake, createKemHandshake, sessionKeys } from '../utilities/MessageCryptography';
+import {
+  encryptMessage,
+  decryptMessage,
+  receiveKemHandshake,
+  createKemHandshake,
+  getRecipientPublicKey,
+  initializeMyKemKeys,
+  hasConversationKey,
+  restoreConversationKey,
+} from '../utilities/MessageCryptography';
 
 interface Conversation {
   id: string;
@@ -104,6 +113,19 @@ export default function Messages() {
       }
     };
     fetchUser();
+  }, []);
+
+  // Initialize active user's public and private ML-KEM keys
+  useEffect(() => {
+    const initKem = async () => {
+      try {
+        await initializeMyKemKeys();
+      } catch (err) {
+        console.error("Failed to initialize KEM keys:", err);
+      }
+    };
+
+    initKem();
   }, []);
 
   // Fetch conversations once you reach the dashboard website
@@ -235,12 +257,15 @@ export default function Messages() {
 
     ws.onmessage = async (e) => {
       const data = JSON.parse(e.data);
-      if (data.type === "kem_handshake") {
+      if (data.type === "kem_handshake") {        
+        if (!currentUserIdRef.current) return;
+        
         await receiveKemHandshake(
           data.conversationId,
-          data.kemAlgorithm,
-          data.kemCiphertext
+          currentUserIdRef.current,
+          data.wrappedKeys
         );
+
         return;
       }
       
@@ -282,6 +307,15 @@ export default function Messages() {
     };
   }, [activeConversationId, currentUserEmail]);
 
+  useEffect(() => {
+    if (!activeConversationId || !currentUserId) return;
+
+    // Restore conversation key in case of refresh
+    restoreConversationKey(activeConversationId, currentUserId).catch(err => {
+      console.warn("Could not restore conversation key:", err);
+    });
+  }, [activeConversationId, currentUserId]);
+
   function MessageBubbleText({
     msg,
     decryptMessage,
@@ -298,8 +332,12 @@ export default function Messages() {
       let cancelled = false;
 
       const run = async () => {
-        const text = await decryptMessage(activeConversationId, msg.encrypted_content);
-        if (!cancelled) setDecrypted(text);
+        try {
+          const text = await decryptMessage(activeConversationId, msg.encrypted_content);
+          if (!cancelled) setDecrypted(text);
+        } catch {
+          if (!cancelled) setDecrypted("[Unable to decrypt message]");
+        }
       };
 
       run();
@@ -307,7 +345,7 @@ export default function Messages() {
       return () => {
         cancelled = true;
       };
-    }, [msg.encrypted_content]);
+    }, [activeConversationId, msg.encrypted_content]);
 
     return (
       <div>{decrypted}</div>
@@ -318,27 +356,50 @@ export default function Messages() {
   const handleSendMessage = async () => {
     if (!messageInput.trim() || !socketRef.current || !activeConversationId) return;
     
-    // Initialize encryption key with ML-KEM if not yet established
-    if (!sessionKeys.has(activeConversationId)) {
-      const handshake = await createKemHandshake(activeConversationId, recipientPublicKey);
+    // Restore or initialize encryption key with ML-KEM if not yet established
+    if (!hasConversationKey(activeConversationId)) {
+      const restored = currentUserId
+        ? await restoreConversationKey(activeConversationId, currentUserId)
+        : false;
 
-      socketRef.current.send(JSON.stringify({
-        type: "kem_handshake",
-        conversationId: activeConversationId,
-        kemCiphertext: handshake.kemCiphertext,
-      }));
+      if (!restored) {
+        const recipients = activeChat?.participants;
+
+        if (!recipients || recipients.length === 0) {
+          throw new Error("Could not determine conversation recipients for key generation");
+        }
+
+        const recipientKeys = await Promise.all(
+          recipients.map(async p => ({
+            id: p.id,
+            publicKey: await getRecipientPublicKey(p.id),
+          }))
+        );
+
+        const handshake = await createKemHandshake(
+          activeConversationId,
+          recipientKeys,
+        );
+
+        socketRef.current.send(JSON.stringify(handshake));
+      }
     }
 
     const encryptedMessage = await encryptMessage(activeConversationId, messageInput);
 
-    socketRef.current.send(JSON.stringify({
-      type: "chat_message",
-      conversationId: activeConversationId,
-      content: encryptedMessage,
-    }));
-    
-    setMessageInput("");
-    setMessagePriority("normal");
+    try {
+      socketRef.current.send(JSON.stringify({
+        type: "chat_message",
+        conversationId: activeConversationId,
+        message: encryptedMessage,
+        priority: messagePriority,
+      }));
+
+      setMessageInput("");
+      setMessagePriority("normal");
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
   };
 
   const handleDeleteMessage = (messageId: number) => {
@@ -595,7 +656,7 @@ export default function Messages() {
                 <span style={{ fontSize: "12px", color: "#555" }}>
                   {(() => {
                     const others = conv.participants
-                      .filter(p => p.username !== currentUserEmail) || [];
+                      .filter(p => p.id !== currentUserId) || [];
                     const maxDisplay = 3;
                     const displayed = others.slice(0, maxDisplay);
                     const remaining = others.length - displayed.length;

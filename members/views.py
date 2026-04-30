@@ -10,6 +10,7 @@ from django.utils.decorators import method_decorator
 from django_ratelimit.decorators import ratelimit
 
 from .forms import CustomUserCreationForm
+from .models import UserKemKey
 
 class member_detail_api(APIView):
     permission_classes = [AllowAny]
@@ -142,6 +143,24 @@ class current_user_api(APIView):
             "username": user.username
         })
 
+class save_my_kem_public_key_api(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        public_key = request.data.get("public_key")
+
+        if not isinstance(public_key, list):
+            return Response({"error": "public_key must be a list"}, status=400)
+
+        UserKemKey.objects.update_or_create(
+            user=request.user,
+            defaults={"public_key": public_key}
+        )
+
+        return Response({
+            "message": "Public key saved successfully"
+        })
+
 class UserListView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -172,3 +191,16 @@ class UserSearchAPI(APIView):
         users = User.objects.filter(username__icontains=query)[:10]
         data = [{"id": u.id, "username": u.username} for u in users]
         return Response(data)
+
+class user_public_key_api(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, id):
+        try:
+            key = UserKemKey.objects.get(user_id=id)
+        except UserKemKey.DoesNotExist:
+            return Response({"error": "No public KEM key found"}, status=404)
+
+        return Response({
+            "public_key": key.public_key
+        })

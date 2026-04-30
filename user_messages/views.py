@@ -8,7 +8,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework import generics, permissions
 from django.contrib.auth import get_user_model
 from rest_framework import status
-from .models import Message, Conversation, Log
+from .models import ConversationKey, Message, Conversation, Log
 from .serializers import ConversationSerializer
 from .serializers import CurrentUserSerializer
 from .serializers import MessageSerializer
@@ -171,6 +171,28 @@ class RemoveMemberView(APIView):
             status=200
         )
 
+class MyConversationKeyView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, conversation_id):
+        try:
+            key = ConversationKey.objects.get(
+                conversation_id=conversation_id,
+                recipient=request.user
+            )
+        except ConversationKey.DoesNotExist:
+            return Response({"error": "No conversation key found"}, status=404)
+
+        return Response({
+            "conversationId": str(conversation_id),
+            "wrappedKeys": [
+                {
+                    "recipientId": request.user.id,
+                    "kemCiphertext": key.kem_ciphertext,
+                    "encryptedConversationKey": key.encrypted_conversation_key,
+                }
+            ]
+        })
 
 class LogListView(APIView):
     # Changed from IsAuthenticated so admins can only see the logs even fetching them

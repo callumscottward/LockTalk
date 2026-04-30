@@ -2,7 +2,7 @@ import json
 from django.contrib.auth import get_user_model
 from channels.generic.websocket import AsyncWebsocketConsumer, AsyncJsonWebsocketConsumer
 from .serializers import ConversationSerializer
-from .models import Conversation, Message
+from .models import Conversation, Message, ConversationKey
 from channels.db import database_sync_to_async
 from django.utils import timezone
 from django.db.models import Count
@@ -86,6 +86,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         data = json.loads(text_data)
 
+        if data.get("type") == "kem_handshake":
+            await self.handle_kem_handshake(data)
+            return
+
         action = data.get("action")
 
         if action == "delete_message":
@@ -156,6 +160,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             "sender_email": event["sender_email"],
             "sender_name": event["sender_name"],
             "message_id": event["message_id"],
+            "timestamp": event["timestamp"],
             "priority": event.get("priority", "normal"), 
         }))
         
@@ -182,6 +187,37 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             "type": "message_deleted",
             "message_id": event["message_id"]
+        }))
+    
+    async def handle_kem_handshake(self, data):
+        wrapped_keys = data.get("wrappedKeys", [])
+
+        for wrapped in wrapped_keys:
+            await database_sync_to_async(
+                lambda wrapped=wrapped: ConversationKey.objects.update_or_create(
+                    conversation_id=self.conversation_id,
+                    recipient_id=wrapped["recipientId"],
+                    defaults={
+                        "kem_ciphertext": wrapped["kemCiphertext"],
+                        "encrypted_conversation_key": wrapped["encryptedConversationKey"],
+                    },
+                )
+            )()
+
+        await self.channel_layer.group_send(
+            self.group_name,
+            {
+                "type": "kem_handshake",
+                "conversationId": self.conversation_id,
+                "wrappedKeys": wrapped_keys,
+            }
+        )
+
+    async def kem_handshake(self, event):
+        await self.send(text_data=json.dumps({
+            "type": "kem_handshake",
+            "conversationId": event["conversationId"],
+            "wrappedKeys": event["wrappedKeys"],
         }))
 
 class ConversationConsumer(AsyncJsonWebsocketConsumer):

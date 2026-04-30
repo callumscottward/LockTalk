@@ -79,7 +79,7 @@ class ConversationSerializer(serializers.ModelSerializer):
 
       #  return data
     
-      def to_representation(self, instance):
+    def to_representation(self, instance):
         data = super().to_representation(instance)
 
         if data["name"] is None or data["name"].strip() == "":

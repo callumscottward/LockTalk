@@ -12,11 +12,26 @@ from django_ratelimit.decorators import ratelimit
 from .forms import CustomUserCreationForm
 from .models import UserKemKey
 
-#Views
-#creates API views for member detail, login, logout, register, current user, user list, user search
+## @file views.py
+#  @brief API views for user management and authentication.
+#
+#  This file includes endpoints for:
+#  - User login/logout/registration
+#  - Retrieving user details
+#  - Searching users
+#  - Managing KEM public keys
+#  - Listing users
 
+
+## @class member_detail_api
+# @brief creates API views for member detail, login, logout, register, current user, user list, user search
+# @details retrieves details by user id
 class member_detail_api(APIView):
     permission_classes = [AllowAny]
+
+    ## @brief Handles POST request for user login.
+    #  @param request The request object containing email and password
+    #  @return Response indicating success or failure of login attempt
 
     def get(self, request, id):
         try:
@@ -30,9 +45,15 @@ class member_detail_api(APIView):
             "lastName": member.last_name
         })
 
+## @class login_api
+# @brief creates api view for login page
+# @details handles user authentication
 class login_api(APIView):
     permission_classes = [AllowAny]
 
+    ## @brief Handles POST request for user login.
+    #  @param request The request object containing email and password.
+    #  @return Response indicating success or failure of login attempt.
     @method_decorator(ratelimit(key='ip', rate='2/m', block=False))
     @method_decorator(ratelimit(key='post:email', rate='2/m', block=False))
     def post(self, request):
@@ -73,9 +94,15 @@ class login_api(APIView):
             "message": "Invalid email or password"
         }, status=400)
     
+## @class LogoutAPIView
+# @brief creates API view for logout
+# @details handles user logout
 class LogoutAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
+    ## @brief Logs out the currently authenticated user.
+    #  @param request The request object.
+    #  @return Response confirming logout.
     def post(self, request):
         user_email = request.user.email
 
@@ -88,9 +115,15 @@ class LogoutAPIView(APIView):
             )
         return Response({"message": "Logged out successfully"})
 
+## @class current_user_api
+# @brief creates register api view
+# @details handles user registration
 class register_api(APIView):
     permission_classes = [AllowAny]
 
+    ## @brief Handles POST request to register a new user.
+    #  @param request The request object containing registration data.
+    #  @return Response indicating success or failure of registration.
     def post(self, request):
 
         form = CustomUserCreationForm(request.data)
@@ -135,9 +168,15 @@ class register_api(APIView):
             "errors": form.errors
         }, status=400)
     
+## @class current_user_api
+# @brief creates current user api view
+# @details retrieves 
 class current_user_api(APIView):
     permission_classes = [IsAuthenticated]
 
+    ## @brief Handles GET request to retrieve current user info.
+    #  @param request The request object.
+    #  @return Response containing current user details.
     def get(self, request):
         user = request.user
 
@@ -147,9 +186,15 @@ class current_user_api(APIView):
             "username": user.username
         })
 
+## @class save_my_kem_public_key_api
+# @brief creates api view for users public kem key
+# @details saves or updates the user's public kem key
 class save_my_kem_public_key_api(APIView):
     permission_classes = [IsAuthenticated]
 
+    ## @brief Handles POST request to store user's public key.
+    #  @param request The request object containing public_key.
+    #  @return Response indicating success or validation error.
     def post(self, request):
         public_key = request.data.get("public_key")
 
@@ -165,9 +210,17 @@ class save_my_kem_public_key_api(APIView):
             "message": "Public key saved successfully"
         })
 
+
+## @class UserListView
+# @brief creates an api view for the user list
+# @details retrieves a list of users with optional search filtering
 class UserListView(APIView):
     permission_classes = [IsAuthenticated]
 
+    ## @brief Handles GET request to list users.
+    #  @param request The request object.
+    #  @param[in] search (Query Param) Optional username filter.
+    #  @return Response containing list of users.
     def get(self, request):
         query = request.GET.get("search", "")
 
@@ -187,18 +240,32 @@ class UserListView(APIView):
 
         return Response(data)
     
+## @class UserSearchAPI
+# @brief creates an api view for user search
+# @details provides a limited user serch endpoint
 class UserSearchAPI(APIView):
     permission_classes = [IsAuthenticated]
 
+    ## @brief Handles GET request to search users (limited results).
+    #  @param request The request object.
+    #  @param[in] search (Query Param) Username search string.
+    #  @return Response containing up to 10 matching users.
     def get(self, request):
         query = request.GET.get("search", "")
         users = User.objects.filter(username__icontains=query)[:10]
         data = [{"id": u.id, "username": u.username} for u in users]
         return Response(data)
 
+## @class user_public_key_api
+# @brief creates an api view for the public kem key
+# @details retrieves an user's public KEM key
 class user_public_key_api(APIView):
     permission_classes = [IsAuthenticated]
 
+     ## @brief Handles GET request to fetch a user's public key.
+    #  @param request The request object.
+    #  @param id The ID of the user.
+    #  @return Response containing the public key or 404 if not found.
     def get(self, request, id):
         try:
             key = UserKemKey.objects.get(user_id=id)

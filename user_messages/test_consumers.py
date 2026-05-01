@@ -5,13 +5,14 @@ from django.contrib.auth import get_user_model
 from user_messages.models import Conversation, Message
 from LockTalk.asgi import application
 from types import SimpleNamespace
+from channels.db import database_sync_to_async
 
 User = get_user_model()
 
 
 class ChatConsumerTest(TransactionTestCase):
 
-    async def asyncSetUp(self):
+    def SetUp(self):
         self.user = User.objects.create_user(
             username="testuser",
             password="password"

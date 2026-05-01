@@ -76,7 +76,7 @@ export default function Signup() {
 
       localStorage.setItem("username", `${safeFirst} ${safeLast}`);
       setMessage("Account created successfully!");
-      window.location.href = "/dashboard"; // redirect to dashboard
+      globalThis.location.href = "/dashboard"; // redirect to dashboard
     } else {
       if (data.errors) setErrors(data.errors);
       if (data.message) setMessage(data.message);

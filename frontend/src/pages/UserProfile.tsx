@@ -61,7 +61,7 @@ export default function UserProfile() {
     }}>
 
         <button 
-          onClick={() => window.location.href = "/Dashboard"} 
+          onClick={() => globalThis.location.href = "/Dashboard"} 
           style={{
             background: "none",
             border: "none",

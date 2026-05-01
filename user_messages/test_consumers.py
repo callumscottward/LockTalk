@@ -32,27 +32,29 @@ class ChatConsumerTest(TransactionTestCase):
 
         await communicator.disconnect()
 
+    
     async def test_send_message(self):
         communicator = WebsocketCommunicator(
             application,
             f"/ws/conversation/{self.conversation.id}/"
         )
-
+        
         communicator.scope["user"] = self.user
-
+        communicator.scope["request"] = type("req", (), {"user": self.user})()
+        
         connected, _ = await communicator.connect()
         self.assertTrue(connected)
-
+        
         await communicator.send_json_to({
             "message": "Hello"
         })
-
+        
         response = await communicator.receive_json_from()
-
+        
         self.assertEqual(response["type"], "chat_message")
         self.assertEqual(response["content"], "Hello")
-
+        
         count = await database_sync_to_async(Message.objects.count)()
         self.assertEqual(count, 1)
-
+        
         await communicator.disconnect()

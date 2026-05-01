@@ -627,13 +627,21 @@ export default function Messages() {
           <p style={{ padding: "15px" }}>Loading...</p>
         ) : (
           conversations.map(conv => (
-            <button
+            <div
               key={conv.id}
+              role="button"
+              tabIndex={0}
               onMouseEnter={() => setHoveredConvId(conv.id)}
               onMouseLeave={() => setHoveredConvId(null)}
               onClick={() => {
                 setActiveConversationId(conv.id);
                 currentConversationId.current = conv.id;
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  setActiveConversationId(conv.id);
+                  currentConversationId.current = conv.id;
+                }
               }}
               style={{
                 padding: "12px",
@@ -644,7 +652,6 @@ export default function Messages() {
                 alignItems: "center",
                 borderBottom: "1px solid #eee",
                 width: "100%",
-                border: "none",
                 textAlign: "left"
               }}
             >
@@ -689,10 +696,11 @@ export default function Messages() {
                 (!conv.is_group || conv.moderator === currentUserId) && (
                   <button
                     onClick={(e) => {
-                      e.stopPropagation();
+                      e.stopPropagation(); // 🔑 prevents triggering row click
                       handleDeleteConversation(conv.id);
                     }}
                     style={{
+                      marginRight: "12px", 
                       background: "none",
                       border: "none",
                       color: "darkred",
@@ -704,7 +712,7 @@ export default function Messages() {
                     ✕
                   </button>
                 )}
-            </button>
+            </div>
           ))
         )}
       </div>

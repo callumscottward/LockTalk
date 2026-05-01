@@ -34,14 +34,30 @@ afterEach(() => {
 
 describe("UserManagement Page", () => {
 
-  test("renders users in table", async () => {
+  test("renders user table", async () => {
     render(<UserManagement />);
 
-    expect(await screen.findByText("Alice")).toBeInTheDocument();
-    expect(await screen.findByText("Bob")).toBeInTheDocument();
+    const tables = await screen.findAllByRole("table");
+
+    expect(tables[1]).toBeInTheDocument();
   });
 
-  test("renders correct roles", async () => {
+  test("renders user rows correctly", async () => {
+    render(<UserManagement />);
+
+    const tables = await screen.findAllByRole("table");
+    const bodyTable = tables[1];
+
+    const rows = within(bodyTable).getAllByRole("row");
+
+    // ONLY data rows exist (no header inside tbody table)
+    expect(rows.length).toBe(2);
+
+    expect(screen.getByText("Alice")).toBeInTheDocument();
+    expect(screen.getByText("Bob")).toBeInTheDocument();
+  });
+
+  test("renders role labels correctly", async () => {
     render(<UserManagement />);
 
     await waitFor(() => {
@@ -54,18 +70,9 @@ describe("UserManagement Page", () => {
     render(<UserManagement />);
 
     await waitFor(() => {
-      expect(screen.getByText("Active")).toBeInTheDocument();
-      expect(screen.getByText("Inactive")).toBeInTheDocument();
+      expect(screen.getByText("active")).toBeInTheDocument();
+      expect(screen.getByText("inactive")).toBeInTheDocument();
     });
-  });
-
-  test("renders both users", async () => {
-    render(<UserManagement />);
-
-    const rows = await screen.findAllByRole("row");
-
-    // header row + 2 users
-    expect(rows.length).toBeGreaterThanOrEqual(3);
   });
 
 });

@@ -5,7 +5,8 @@ from user_messages.models import Conversation, Message
 
 User = get_user_model()
 
-
+## @class ConversationTests
+# @brief Tests conversation retrieval endpoints
 class ConversationTests(TestCase):
 
     def setUp(self):
@@ -17,6 +18,8 @@ class ConversationTests(TestCase):
         self.conversation = Conversation.objects.create(name="Test Chat")
         self.conversation.participants.add(self.user1, self.user2)
 
+    ## @brief Tests retrieving conversations for an authenticated user
+    #  @details Ensures user can access their conversation list endpoint
     def test_get_conversations(self):
         self.client.login(username="user1", password="pass")
 
@@ -25,6 +28,8 @@ class ConversationTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
 
+## @class MessageTests
+# @brief Tests message retrieval and creation endpoints
 class MessageTests(TestCase):
 
     def setUp(self):
@@ -35,6 +40,8 @@ class MessageTests(TestCase):
         self.conversation = Conversation.objects.create()
         self.conversation.participants.add(self.user)
 
+    ## @brief Tests retrieving messages from a conversation
+    #  @details Ensures only participants can access messages
     def test_get_messages(self):
         self.client.login(username="user", password="pass")
 
@@ -44,6 +51,8 @@ class MessageTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
 
+    ## @brief Tests sending a valid message
+    #  @details Ensures message creation works and database is updated
     def test_send_message(self):
         self.client.login(username="user", password="pass")
 
@@ -55,6 +64,8 @@ class MessageTests(TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(Message.objects.count(), 1)
 
+    ## @brief Tests sending an empty message
+    #  @details Ensures validation rejects empty content
     def test_send_empty_message(self):
         self.client.login(username="user", password="pass")
 
@@ -66,6 +77,8 @@ class MessageTests(TestCase):
         self.assertEqual(response.status_code, 400)
 
 
+## @class MemberManagementTests
+# @brief Tests adding and removing conversation members
 class MemberManagementTests(TestCase):
 
     def setUp(self):
@@ -77,6 +90,8 @@ class MemberManagementTests(TestCase):
         self.conversation = Conversation.objects.create()
         self.conversation.participants.add(self.user1)
 
+    ## @brief Tests adding a member to a conversation
+    #  @details Ensures users can be added via username
     def test_add_member(self):
         self.client.login(username="user1", password="pass")
 
@@ -87,6 +102,8 @@ class MemberManagementTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
 
+    ## @brief Tests removing a member from a conversation
+    #  @details Ensures participants can be removed by ID
     def test_remove_member(self):
         self.conversation.participants.add(self.user2)
         self.client.login(username="user1", password="pass")
@@ -99,6 +116,8 @@ class MemberManagementTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
 
+## @class LogTests
+# @brief Tests admin-only log access
 class LogTests(TestCase):
 
     def setUp(self):
@@ -110,6 +129,8 @@ class LogTests(TestCase):
             is_staff=True
         )
 
+    ## @brief Tests that logs endpoint is restricted to admins
+    #  @details Ensures non-admin users cannot access system logs
     def test_logs_admin_only(self):
         self.client.login(username="admin", password="pass")
 
@@ -118,12 +139,16 @@ class LogTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
 
+## @class CurrentUserTests
+# @brief Tests retrieval of authenticated user information
 class CurrentUserTests(TestCase):
 
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(username="user", password="pass")
 
+    ## @brief Tests retrieving current logged-in user data
+    #  @details Ensures authentication returns correct user profile
     def test_get_current_user(self):
         self.client.login(username="user", password="pass")
 

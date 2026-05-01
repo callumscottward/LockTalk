@@ -72,7 +72,14 @@ class ConversationSerializer(serializers.ModelSerializer):
             if instance.is_group:
                 data["name"] = f"Group {instance.id.hex[:4]}"
             else:
-                other = instance.participants.exclude(id=self.context["request"].user.id).first()
+                #Old version other = instance.participants.exclude(id=self.context["request"].user.id).first()
+                request = self.context.get("request", None)
+                
+                if request and hasattr(request, "user") and request.user.is_authenticated:
+                    other = instance.participants.exclude(id=request.user.id).first()
+                else:
+                    other = instance.participants.first()  # fallback
+                    
                 data["name"] = other.username if other else "Unknown User"
 
         return data

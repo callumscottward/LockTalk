@@ -33,7 +33,7 @@ export default function ChatDirectory() {
     const fetchAllChats = async () => {
       try {
           // Admin to get conversations
-          const res = await fetch("http://localhost:8000/api/admin/all-conversations/", {
+          const res = await fetch("/api/admin/all-conversations/", {
             headers: authHeaders,
             credentials: "include",
         });
@@ -51,7 +51,8 @@ export default function ChatDirectory() {
   }, []);
 
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:8000/ws/conversations/");
+    const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${wsProtocol}://${window.location.host}/ws/conversations/`);
     conversationSocketRef.current = ws;
 
     ws.onmessage = (e) => {

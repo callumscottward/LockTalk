@@ -26,7 +26,7 @@ export default function UserManagement() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/admin/all-users/", {
+        const res = await fetch("/api/admin/all-users/", {
           credentials: "include",
         });
         const data = await res.json();

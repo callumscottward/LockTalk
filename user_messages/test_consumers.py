@@ -4,13 +4,14 @@ from django.test import TransactionTestCase
 from django.contrib.auth import get_user_model
 from user_messages.models import Conversation, Message
 from LockTalk.asgi import application
+from types import SimpleNamespace
 
 User = get_user_model()
 
 
 class ChatConsumerTest(TransactionTestCase):
 
-    def setUp(self):
+    async def asyncSetUp(self):
         self.user = User.objects.create_user(
             username="testuser",
             password="password"
@@ -19,6 +20,10 @@ class ChatConsumerTest(TransactionTestCase):
         self.conversation = Conversation.objects.create()
         self.conversation.participants.add(self.user)
 
+    def fake_request(self):
+        # Minimal DRF-compatible request object
+        return SimpleNamespace(user=self.user)
+
     async def test_connect_success(self):
         communicator = WebsocketCommunicator(
             application,
@@ -26,35 +31,35 @@ class ChatConsumerTest(TransactionTestCase):
         )
 
         communicator.scope["user"] = self.user
+        communicator.scope["request"] = self.fake_request()
 
         connected, _ = await communicator.connect()
         self.assertTrue(connected)
 
         await communicator.disconnect()
 
-    
     async def test_send_message(self):
         communicator = WebsocketCommunicator(
             application,
             f"/ws/conversation/{self.conversation.id}/"
         )
-        
+
         communicator.scope["user"] = self.user
-        communicator.scope["request"] = type("req", (), {"user": self.user})()
-        
+        communicator.scope["request"] = self.fake_request()
+
         connected, _ = await communicator.connect()
         self.assertTrue(connected)
-        
+
         await communicator.send_json_to({
             "message": "Hello"
         })
-        
+
         response = await communicator.receive_json_from()
-        
+
         self.assertEqual(response["type"], "chat_message")
         self.assertEqual(response["content"], "Hello")
-        
+
         count = await database_sync_to_async(Message.objects.count)()
         self.assertEqual(count, 1)
-        
+
         await communicator.disconnect()

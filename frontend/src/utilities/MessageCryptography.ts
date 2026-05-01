@@ -112,7 +112,12 @@ async function idbSet(key: string, value: unknown): Promise<void> {
   });
 }
 
-// Check whether a conversation AES key is already available in memory
+/**
+ * Check whether a conversation AES key is already available in memory
+ * @param conversationId - The ID of the conversation for which to check the key
+ * @returns True if the key is available, false otherwise
+ */
+
 export function hasConversationKey(conversationId: string): boolean {
   return sessionKeys.has(conversationId);
 }
@@ -136,7 +141,11 @@ async function uploadMyKemPublicKey(publicKey: Uint8Array): Promise<void> {
   }
 }
 
-// Initialize this user's persistent ML-KEM keypair
+/**
+ * Initialize this user's persistent ML-KEM keypair
+ * @returns A promise resolving when the keys are initialized
+ */
+
 export async function initializeMyKemKeys(): Promise<void> {
   if (myKemPrivateKey && myKemPublicKey) return;
 
@@ -163,7 +172,12 @@ export async function initializeMyKemKeys(): Promise<void> {
   await uploadMyKemPublicKey(publicKey);
 }
 
-// Fetch another user's public ML-KEM key from the backend
+/**
+ * Fetch another user's public ML-KEM key from the backend
+ * @param userId - The user whose key to fetch
+ * @returns The user's key once resolved
+ */
+
 export async function getRecipientPublicKey(userId: number): Promise<Uint8Array> {
   const response = await fetch(`/api/users/${userId}/kem-public-key/`, {
     credentials: "include",
@@ -176,18 +190,6 @@ export async function getRecipientPublicKey(userId: number): Promise<Uint8Array>
   const data = await response.json();
 
   return new Uint8Array(data.public_key);
-}
-
-// Fetch public ML-KEM keys for a list of recipients
-export async function getRecipientPublicKeys(
-  recipients: { id: number }[]
-): Promise<RecipientKemInfo[]> {
-  return Promise.all(
-    recipients.map(async recipient => ({
-      id: recipient.id,
-      publicKey: await getRecipientPublicKey(recipient.id),
-    }))
-  );
 }
 
 // Generate a fresh AES-GCM key for a conversation
@@ -244,7 +246,13 @@ async function deriveWrappingKey(
   );
 }
 
-// Create a group-compatible ML-KEM handshake for all recipients
+/**
+ * Create a conversation ML-KEM handshake for all chat recipients
+ * @param conversationId - The ID of the conversation to create the handshake for
+ * @param recipients - The recipients of the conversation
+ * @returns The newly created ML-KEM handshake
+ */
+
 export async function createKemHandshake(
   conversationId: string,
   recipients: RecipientKemInfo[]
@@ -299,7 +307,13 @@ export async function createKemHandshake(
   };
 }
 
-// Receive a KEM handshake and restore this user's conversation AES key
+/**
+ * Receive a KEM handshake and restore this user's conversation AES key
+ * @param conversationId - The ID of the conversation to restore the handshake of
+ * @param myUserId - The user currently using the app
+ * @param wrappedKeys - The wrapped conversation keys
+ * @returns The handshake of the conversation that was received
+ */
 export async function receiveKemHandshake(
   conversationId: string,
   myUserId: number,
@@ -343,7 +357,12 @@ export async function receiveKemHandshake(
   return true;
 }
 
-// Restore this user's wrapped conversation key from the backend after refresh
+/**
+ * Restore this user's wrapped conversation key from the backend after refresh
+ * @param conversationId - The conversation whose key will be restored
+ * @param myUserId - The ID of the user using the site
+ * @returns Whether the key was successfully restored
+ */
 export async function restoreConversationKey(
   conversationId: string,
   myUserId: number
@@ -369,7 +388,13 @@ export async function restoreConversationKey(
   );
 }
 
-// Encrypt a plaintext message using the conversation AES key
+/**
+ * Encrypt a plaintext message using the conversation AES key
+ * @param conversationId - The conversation the message is in, determining the key
+ * @param message - The plaintext message to encrypt
+ * @returns The encrypted form of the message
+ */
+
 export async function encryptMessage(
   conversationId: string,
   message: string
@@ -395,7 +420,12 @@ export async function encryptMessage(
   };
 }
 
-// Decrypt a received message using the conversation AES key
+/**
+ * Decrypt a received message using the conversation AES key
+ * @param conversationId - The conversation the message is in, determining the key
+ * @param message - The encrypted message to decrypt
+ * @returns The decrypted plaintext message that can be read
+ */
 export async function decryptMessage(
   conversationId: string,
   message: { iv: number[]; data: number[] }

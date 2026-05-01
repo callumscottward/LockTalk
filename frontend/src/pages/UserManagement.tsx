@@ -197,7 +197,8 @@ const btnStyle: React.CSSProperties = {
 const headerStyle: React.CSSProperties = {
   padding: "15px",
   fontWeight: "bold",
-  borderBottom: "2px solid #ddd"
+  borderBottom: "2px solid #ddd", 
+  textAlign: "center",
 };
 
 const bodyStyle: React.CSSProperties = {

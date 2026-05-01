@@ -2,11 +2,25 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Login from "./Login";
 
+/**
+ * @name Login Page Tests
+ * @description
+ * Unit tests for the Login page component.
+ *
+ * These tests verify:
+ * Proper rendering of login form UI elements
+ * User ability to input email and password
+ * Basic form submission interaction (UI-level only)
+ */
 describe("Login Page", () => {
+
+  /**
+   * @test renders login form
+   * @description Ensures that all essential login form elements are rendered
+   */
   it("renders login form", () => {
     render(<Login />);
 
-    // Be specific (no ambiguity)
     expect(
       screen.getByRole("heading", { name: /login/i })
     ).toBeInTheDocument();
@@ -19,6 +33,10 @@ describe("Login Page", () => {
     ).toBeInTheDocument();
   });
 
+  /**
+   * @test allows typing email and password
+   * @description Ensures controlled inputs update correctly when user types
+   */
   it("allows typing email and password", async () => {
     render(<Login />);
 
@@ -32,6 +50,11 @@ describe("Login Page", () => {
     expect(password).toHaveValue("password123");
   });
 
+  /**
+   * @test submits login form
+   * @description Simulates form submission interaction (UI-level test only)
+   * Note: No backend or authentication response is asserted here.
+   */
   it("submits login form", async () => {
     render(<Login />);
 
@@ -45,4 +68,5 @@ describe("Login Page", () => {
     // Adjust depending on app behavior
     expect(true).toBe(true);
   });
+
 });

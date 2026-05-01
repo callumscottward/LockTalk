@@ -1,5 +1,4 @@
-import React from 'react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import {
   encryptMessage,
   decryptMessage,
@@ -68,7 +67,7 @@ export default function Messages() {
   const [searchQuery, setSearchQuery] = useState("");
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-  const [newConversationName, setConversationName] = useState("")
+  const [newConversationName, setNewConversationName] = useState("")
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [hoveredMessageId, setHoveredMessageId] = useState<number | null>(null);
   const [hoveredConvId, setHoveredConvId] = useState<string | null>(null);
@@ -86,7 +85,9 @@ export default function Messages() {
   const currentUserIdRef = useRef<number | null>(null);
   const currentUserEmailRef = useRef<string | null>(null);
   const currentConversationId = useRef<string | null>(null);
-  const [messagePriority, setMessagePriority] = useState<"normal" | "sensitive" | "highly_sensitive">("normal");
+
+  type Priority = "low" | "medium" | "high";
+  const [messagePriority, setMessagePriority] = useState<Priority>("low");
 
   const authHeaders = {
     "Content-Type": "application/json",
@@ -140,11 +141,16 @@ export default function Messages() {
         //Sort the conversations by the most recent time (The time variable is affected by the data of creation and last message)
         let sortedConversations = [...data].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
         setConversations(sortedConversations);
-        setActiveConversationId(sortedConversations[0].id);
-        currentConversationId.current = sortedConversations[0].id;
+        if (sortedConversations.length > 0) {
+          setActiveConversationId(sortedConversations[0].id);
+          currentConversationId.current = sortedConversations[0].id;
+        }
       } catch (err) {
-        //console.error(err);
-        console.log("No Conversation Exists Yet")
+        console.error(err);
+
+        setConversations([]);
+        setActiveConversationId(null);
+        currentConversationId.current = null;
       } finally {
         setLoadingConversations(false);
       }
@@ -325,10 +331,10 @@ export default function Messages() {
   }>) {
     const [decrypted, setDecrypted] = useState("");
 
-    if (!activeConversationId)
-      return null;
-
     useEffect(() => {
+      if (!activeConversationId)
+        return;
+
       let cancelled = false;
 
       const run = async () => {
@@ -396,7 +402,7 @@ export default function Messages() {
       }));
 
       setMessageInput("");
-      setMessagePriority("normal");
+      setMessagePriority("low");
     } catch (error) {
       console.error("Error sending message:", error);
     }
@@ -441,11 +447,6 @@ export default function Messages() {
       username
     }));
   };
-
-  // const handleUpdateExpiration = () => {
-  //   // Logic goes here for the expiration date
-  //   setIsSettingsDropdownOpen(false);
-  // };
 
   const handleLogout = async () => {
     try {
@@ -590,7 +591,7 @@ export default function Messages() {
 
     setSelectedUsers([]);
     setSearchQuery("");
-    setConversationName("");
+    setNewConversationName("");
     setIsModalOpen(false);
   };
 
@@ -864,7 +865,7 @@ export default function Messages() {
               const showDateDivider = currentDate !== prevDate;
 
               return (
-                <React.Fragment key={msg.id}>
+                <Fragment key={msg.id}>
                   {/* DATE DIVIDER */}
                   {showDateDivider && (
                     <div
@@ -881,9 +882,12 @@ export default function Messages() {
                   )}
                   <div
                     key={msg.id}
-                    // Logic for hovering
+                    role="article"
+                    tabIndex={0}
                     onMouseEnter={() => setHoveredMessageId(msg.id)}
                     onMouseLeave={() => setHoveredMessageId(null)}
+                    onFocus={() => setHoveredMessageId(msg.id)}
+                    onBlur={() => setHoveredMessageId(null)}
                     style={{
                       display: "flex",
                       flexDirection: "column",
@@ -934,7 +938,7 @@ export default function Messages() {
                               position: "absolute",
                               top: "5px",
                               right: msg.is_me ? "-5px" : "auto",
-                              left: !msg.is_me ? "-5px" : "auto",
+                              left: msg.is_me ? "auto" : "-5px",
                               background: "none",
                               border: "none",
                               color: "#ff4d4d",
@@ -948,7 +952,7 @@ export default function Messages() {
                         )}
                     </div>
                   </div>
-                </React.Fragment>
+                </Fragment>
               );
             })
           )}
@@ -958,7 +962,7 @@ export default function Messages() {
         <div style={{ padding: "10px", borderTop: "1px solid #ddd", display: "flex", gap: "10px" }}>
           <select
             value={messagePriority}
-            onChange={(e) => setMessagePriority(e.target.value as any)}
+            onChange={(e) => setMessagePriority(e.target.value as Priority)}
             style={{ padding: "6px", borderRadius: "6px" }}
           >
             <option value="normal">Normal</option>
@@ -1122,7 +1126,7 @@ export default function Messages() {
               <input
                 placeholder="Conversation name"
                 value={newConversationName}
-                onChange={(e) => setConversationName(e.target.value)}
+                onChange={(e) => setNewConversationName(e.target.value)}
                 style={{ width: "100%", padding: "8px", marginBottom: "5px" }}
               />
               {newConversationName && (<input
@@ -1180,7 +1184,7 @@ export default function Messages() {
               <button onClick={() => {
                 setIsModalOpen(false);
                 setSelectedUsers([]);
-                setConversationName("");
+                setNewConversationName("");
               }} style={{ padding: "8px", color: "#000000", background: "#ddd", borderRadius: "4px" }}>Cancel</button>
               <button onClick={handleCreateChat} style={{ padding: "8px", background: "#075E54", color: "white", borderRadius: "4px" }}>Create</button>
             </div>

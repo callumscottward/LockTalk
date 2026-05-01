@@ -108,8 +108,6 @@ WSGI_APPLICATION = 'LockTalk.wsgi.application'
 # For Channels and Daphne
 ASGI_APPLICATION = 'LockTalk.asgi.application'
 
-#USE_REDIS = True # Set to True when Docker is running
-
 def is_redis_running():
     try:
         client = redis.Redis(host="127.0.0.1", port=6379)

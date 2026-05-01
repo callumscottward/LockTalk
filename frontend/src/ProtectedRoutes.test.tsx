@@ -30,7 +30,7 @@ describe('ProtectedRoutes', () => {
    */
   beforeEach(() => {
     vi.resetAllMocks();
-    global.fetch = vi.fn();
+    globalThis.fetch = vi.fn();
   });
 
   /**
@@ -38,7 +38,7 @@ describe('ProtectedRoutes', () => {
    * @description Ensures loading state is displayed while authentication request is pending
    */
   test('shows loading initially', async () => {
-    global.fetch = vi.fn(() => new Promise(() => {}));
+    globalThis.fetch = vi.fn(() => new Promise(() => {}));
 
     render(
       <MemoryRouter initialEntries={['/']}>
@@ -54,7 +54,7 @@ describe('ProtectedRoutes', () => {
    * @description Ensures authenticated users can access protected routes
    */
   test('renders protected content when authenticated', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
     });
 
@@ -76,7 +76,7 @@ describe('ProtectedRoutes', () => {
    * @description Ensures unauthenticated users are redirected to login page
    */
   test('redirects to login when unauthenticated', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,
     });
 
@@ -99,7 +99,7 @@ describe('ProtectedRoutes', () => {
    * @description Ensures network errors are treated as failed authentication attempts
    */
   test('handles fetch error as unauthenticated', async () => {
-    global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
 
     render(
       <MemoryRouter initialEntries={['/']}>

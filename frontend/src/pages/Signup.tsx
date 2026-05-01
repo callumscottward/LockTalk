@@ -15,6 +15,12 @@ interface SignupResponse {
   message?: string;
   errors?: Record<string, string[]>;
 }
+function getCSRFToken() {
+  const regex = /csrftoken=([\w-]+)/;
+  const match = regex.exec(document.cookie);
+
+  return match ? match[1] : "";
+}
 
 export default function Signup() {
   const [email, setEmail] = useState("");
@@ -25,12 +31,6 @@ export default function Signup() {
 
   const [message, setMessage] = useState("");
   const [errors, setErrors] = useState<Record<string, string[]>>({});
-
-  function getCSRFToken() {
-    const match = document.cookie.match(/csrftoken=([\w-]+)/);
-    return match ? match[1] : "";
-  }
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -62,7 +62,7 @@ describe("UserManagement Page", () => {
 
     await waitFor(() => {
       expect(screen.getByText("admin")).toBeInTheDocument();
-      expect(screen.getByText("user")).toBeInTheDocument();
+      expect(screen.getByText("viewer")).toBeInTheDocument();
     });
   });
 

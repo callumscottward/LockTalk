@@ -63,38 +63,27 @@ class ConversationSerializer(serializers.ModelSerializer):
             }
             for user in obj.participants.all()
         ]
-
-    #keeping the old version of to_representation around in case anything is broken
-    
-    #def to_representation(self, instance):
-     #   data = super().to_representation(instance)
-
-        # Only override if name is REALLY missing (None), not just empty string
-#        if data["name"] is None or data["name"].strip() == "":
- #           if instance.is_group:
-  #              data["name"] = f"Group {instance.id.hex[:4]}"
-   #         else:
-    #            other = instance.participants.exclude(id=self.context["request"].user.id).first()
-     #           data["name"] = other.username if other else "Unknown User"
-
-      #  return data
     
     def to_representation(self, instance):
         data = super().to_representation(instance)
 
+        # Only override if name is REALLY missing (None), not just empty string
         if data["name"] is None or data["name"].strip() == "":
             if instance.is_group:
                 data["name"] = f"Group {instance.id.hex[:4]}"
             else:
-                request = self.context.get("request")
-                user = getattr(request, "user", None)
-                user_id = getattr(user, "id", None)
-
-                other = instance.participants.exclude(id=user_id).first()
+                #Old version other = instance.participants.exclude(id=self.context["request"].user.id).first()
+                request = self.context.get("request", None)
+                
+                if request and hasattr(request, "user") and request.user.is_authenticated:
+                    other = instance.participants.exclude(id=request.user.id).first()
+                else:
+                    other = instance.participants.first()  # fallback
+                    
                 data["name"] = other.username if other else "Unknown User"
 
         return data
-          
+    
 class LogSerializer(serializers.ModelSerializer):
 
     class Meta:

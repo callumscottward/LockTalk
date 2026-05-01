@@ -8,13 +8,16 @@ from user_messages.models import Log
 from user_messages.logs_rotate import rotate_logs_if_needed
 
 
+## @class LogRotationTest
+# @brief Tests automated log rotation and export behavior
 class LogRotationTest(TestCase):
 
     def setUp(self):
         cache.clear()
 
+    ## @brief Tests that old logs are rotated and exported
+    #  @details Ensures logs older than threshold are deleted and exported to CSV
     def test_rotates_old_logs(self):
-        # Create old log (8 days ago)
         old_log = Log.objects.create(
             event_type="LOGIN",
             sender="user1",
@@ -26,13 +29,13 @@ class LogRotationTest(TestCase):
 
         rotate_logs_if_needed()
 
-        # Logs should be deleted
         self.assertEqual(Log.objects.count(), 0)
 
-        # File should be created
         files = os.listdir("exports")
         self.assertTrue(any(file.endswith(".csv") for file in files))
 
+    ## @brief Tests that recent logs are not rotated
+    #  @details Ensures logs within retention period remain in database
     def test_does_not_rotate_recent_logs(self):
         Log.objects.create(
             event_type="LOGIN",
@@ -43,11 +46,11 @@ class LogRotationTest(TestCase):
 
         rotate_logs_if_needed()
 
-        # Log should still exist
         self.assertEqual(Log.objects.count(), 1)
 
+    ## @brief Tests prevention of repeated rotation runs
+    #  @details Ensures cache-based timing guard prevents repeated execution
     def test_prevents_multiple_runs(self):
-        # Set last run to now
         cache.set("last_log_rotation", timezone.now(), None)
 
         Log.objects.create(
@@ -59,14 +62,13 @@ class LogRotationTest(TestCase):
 
         rotate_logs_if_needed()
 
-        # Should not delete logs because it ran recently
         self.assertEqual(Log.objects.count(), 1)
 
+    ## @brief Tests distributed lock protection
+    #  @details Ensures rotation does not execute when lock is already active
     def test_lock_prevents_double_execution(self):
-        # Simulate lock already acquired
         cache.set("log_rotation_lock", "1", timeout=60)
 
         rotate_logs_if_needed()
 
-        # Nothing should happen, but more importantly no crash
         self.assertTrue(True)

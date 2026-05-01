@@ -197,6 +197,27 @@ For viewing use docs/backend/html/index.html and/or docs/frontend/index.html. In
 There is also a page leading to both by running:
 start docs/index.html
 
+## Testing Note:
+For testing backend test cases, many of the tests rely upon an entry for SECRET_KEY within LockTalk/settings.py
+
+Example: 
+
+```bash
+SECRET_KEY = os.getenv("SECRET_KEY") -> SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-test-key-123456")
+```
+
+For actually running the backend test cases
+
+```bash
+python manage.py test
+```
+For running the frontend tests
+
+```bash
+cd frontend
+npm run test
+```
+
 ## Note: Comment type
 
 For documentation to show up, the comments must be formatted a certain way. For Django use ## style, for typescript use /** */ style.

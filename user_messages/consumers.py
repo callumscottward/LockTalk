@@ -305,7 +305,7 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
         serialized = await database_sync_to_async(
             lambda: ConversationSerializer(
                 conversation,
-                context={"request": type("req", (), {"user": self.user})()}
+                context={"request": self.scope}
             ).data
         )()
 
@@ -395,7 +395,7 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
         serialized = await database_sync_to_async(
             lambda: ConversationSerializer(
                 conversation,
-                context={"request": type("req", (), {"user": self.user})()}
+                context={"user": self.scope["user"]}
             ).data
         )()
 

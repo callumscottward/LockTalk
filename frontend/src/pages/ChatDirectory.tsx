@@ -22,7 +22,7 @@ interface Conversation {
 export default function ChatDirectory() {
   const [searchTerm, setSearchTerm] = useState("");
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [, setLoading] = useState(true);
+  const loadingRef = useRef(true);
   const conversationSocketRef = useRef<WebSocket | null>(null);
 
   const authHeaders = {
@@ -44,7 +44,7 @@ export default function ChatDirectory() {
         console.error("Failed to load directory:", err);
       } 
       finally {
-        setLoading(false);
+        loadingRef.current = false;
       }
     };
     fetchAllChats();

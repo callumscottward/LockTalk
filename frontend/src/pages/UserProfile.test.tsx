@@ -8,7 +8,7 @@ import UserProfile from "./UserProfile";
  * Mock API response for the UserProfile component.
  * Simulates backend returning authenticated user profile data.
  */
-global.fetch = vi.fn(() =>
+globalThis.fetch = vi.fn(() =>
   Promise.resolve({
     json: () =>
       Promise.resolve({

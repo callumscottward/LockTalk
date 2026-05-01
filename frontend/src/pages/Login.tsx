@@ -11,6 +11,13 @@ import { useEffect, useState } from "react";
  * @returns The login page for returning users.
  */
 
+function getCSRFToken() {
+  const regex = /csrftoken=([\w-]+)/;
+  const match = regex.exec(document.cookie);
+
+  return match ? match[1] : "";
+}
+
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,11 +36,6 @@ function Login() {
 
     return () => clearInterval(interval);
   }, [cooldown]);
-
-  function getCSRFToken() {
-    const match = document.cookie.match(/csrftoken=([\w-]+)/);
-    return match ? match[1] : "";
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

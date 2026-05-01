@@ -22,7 +22,7 @@ class MockWebSocket {
   removeEventListener = vi.fn();
 }
 
-global.WebSocket = MockWebSocket as any;
+globalThis.WebSocket = MockWebSocket as any;
 
 
 /**
@@ -31,7 +31,7 @@ global.WebSocket = MockWebSocket as any;
  * Mock API response for chat directory data.
  * Simulates backend returning a list of conversations.
  */
-global.fetch = vi.fn(() =>
+globalThis.fetch = vi.fn(() =>
   Promise.resolve({
     json: () =>
       Promise.resolve([

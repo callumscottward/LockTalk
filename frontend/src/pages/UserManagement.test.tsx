@@ -9,7 +9,7 @@ import { vi } from "vitest";
  * Simulates backend returning a list of users for admin dashboard display.
  */
 beforeEach(() => {
-  global.fetch = vi.fn(() =>
+  globalThis.fetch = vi.fn(() =>
     Promise.resolve({
       json: () =>
         Promise.resolve([

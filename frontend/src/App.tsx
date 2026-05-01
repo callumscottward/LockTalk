@@ -25,9 +25,8 @@ import { useState, useEffect } from 'react';
 // Helpful for the staff stuff
 const StaffRoute = ({ user, loading, children }: { user: any, loading: boolean, children: React.ReactElement }) => {
   if (loading) return <div>Loading...</div>; // Prevent redirect before we know who the user is
-  
-  if (!user || user.is_staff !== true) {
-    // If not staff, redirect to dashboard (or landing)
+
+  if (!user?.is_staff) {    // If not staff, redirect to dashboard (or landing)
     return <Navigate to="/dashboard" replace />;
   }
   return children;
@@ -42,7 +41,7 @@ function App() {
     // This should return the user object with 'is_staff' from your serializer
     fetch("/api/verify-staff/", {
       credentials: "include"
-    }) 
+    })
       .then((res) => {
         if (res.ok) return res.json();
         throw new Error("Not logged in");
@@ -63,31 +62,31 @@ function App() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/userProfile" element={<UserProfile />} />
-          
+
           {/* Restricted Staff Routes */}
-          <Route 
-            path="/userManagement" 
+          <Route
+            path="/userManagement"
             element={
               <StaffRoute user={user} loading={loading}>
                 <UserManagement />
               </StaffRoute>
-            } 
+            }
           />
-          <Route 
-            path="/logs" 
+          <Route
+            path="/logs"
             element={
               <StaffRoute user={user} loading={loading}>
                 <Logs />
               </StaffRoute>
-            } 
+            }
           />
-          <Route 
-            path="/chatDirectory" 
+          <Route
+            path="/chatDirectory"
             element={
               <StaffRoute user={user} loading={loading}>
                 <ChatDirectory />
               </StaffRoute>
-            } 
+            }
           />
         </Route>
       </Routes>

@@ -88,18 +88,18 @@ export default function UserProfile() {
         {/* Account Details */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div>
-            <label style={{ fontWeight: 'bold', color: 'gray', display: 'block', fontSize: '0.8rem', textTransform: 'uppercase' }}>Username</label>
+            <label htmlFor="username" style={{ fontWeight: 'bold', color: 'gray', display: 'block', fontSize: '0.8rem', textTransform: 'uppercase' }}>Username</label>
             <div style={{ fontSize: '1.2rem', marginTop: '5px' }}>{currentUserUsername}</div>
           </div>
 
           <div>
-            <label style={{ fontWeight: 'bold', color: 'gray', display: 'block', fontSize: '0.8rem', textTransform: 'uppercase' }}>Role</label>
+            <label htmlFor="role" style={{ fontWeight: 'bold', color: 'gray', display: 'block', fontSize: '0.8rem', textTransform: 'uppercase' }}>Role</label>
             <div style={{ fontSize: '1.1rem', marginTop: '5px', color: '#075E54', fontWeight: 'bold' }}>{currentUser?.is_staff ? 'Admin' : 'User'}</div>
           </div>
 
           {/* Username is saved as email */}
           <div>
-            <label style={{ fontWeight: 'bold', color: 'gray', display: 'block', fontSize: '0.8rem', textTransform: 'uppercase' }}>Email Address</label>
+            <label htmlFor="email-address" style={{ fontWeight: 'bold', color: 'gray', display: 'block', fontSize: '0.8rem', textTransform: 'uppercase' }}>Email Address</label>
             <div style={{ fontSize: '1.1rem', marginTop: '5px' }}>{currentUserEmail}</div>
           </div>
         </div>

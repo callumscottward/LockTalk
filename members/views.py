@@ -98,17 +98,18 @@ class register_api(APIView):
             email = form.cleaned_data["email"]
             password = form.cleaned_data["password1"]
 
-# Log successful registration
-            Log.objects.create(
-                event_type='REGISTER',
-                sender='SYSTEM',       # system-created event
-                receiver=user.username, # the newly created user                    success=True
-            )
+            auth_user = authenticate(request, username=email, password=password)
 
-            user = authenticate(request, username=email, password=password)
-
-            if user is not None:
-                login(request, user)
+            if auth_user is not None:
+                login(request, auth_user)
+                
+                # Log successful registration
+                Log.objects.create(
+                    event_type='REGISTER',
+                    sender='SYSTEM',       # system-created event
+                    receiver=user.username, # the newly created user 
+                    success=True
+                )
 
                 return Response({
                     "success": True,

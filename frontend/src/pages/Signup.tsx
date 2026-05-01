@@ -56,8 +56,25 @@ export default function Signup() {
 
     const data: SignupResponse = await response.json();
 
+    const sanitizeText = (value: string) =>
+      value
+        .normalize("NFKC")
+        .trim();
+
+    const isValidName = (name: string) =>
+      /^[a-zA-Z\s'-]{1,50}$/.test(name);
+
+
     if (response.ok && data.success) {
-      localStorage.setItem("username", `${firstName} ${lastName}`);
+      const safeFirst = sanitizeText(firstName)
+      const safeLast = sanitizeText(lastName)
+
+      if (!isValidName(safeFirst) || !isValidName(safeLast)) {
+        setMessage("Invalid name format.");
+        return;
+      }
+
+      localStorage.setItem("username", `${safeFirst} ${safeLast}`);
       setMessage("Account created successfully!");
       window.location.href = "/dashboard"; // redirect to dashboard
     } else {

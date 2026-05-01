@@ -261,7 +261,7 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
         )()
         participants.append(user)
 
-        participant_ids = set(u.id for u in participants)
+        participant_ids = {u.id for u in participants}
         is_group = len(participants) >= 3
 
         conversation = None
@@ -338,15 +338,6 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
                 Conversation.objects.get
             )(id=conv_id)
 
-            # For Later when we restrict this to moderator only
-            #if user != conversation.moderator:
-            #    return
-
-            # Get participants BEFORE deleting (for broadcast)
-            participants = await database_sync_to_async(
-                lambda: list(conversation.participants.all())
-            )()
-
             # Delete conversation (messages auto-delete via CASCADE)
             await database_sync_to_async(conversation.delete)()
             
@@ -370,7 +361,7 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
         })
     
     async def add_member(self, content):
-        User = get_user_model()
+        user = get_user_model()
 
         username = content.get("username")
         conv_id = content.get("conversation_id")
@@ -383,7 +374,7 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
         )()
 
         user_to_add = await database_sync_to_async(
-            User.objects.get
+            user.objects.get
         )(username=username)
 
         await database_sync_to_async(
@@ -414,7 +405,7 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
             )
             
     async def remove_member(self, content):
-        User = get_user_model()
+        user = get_user_model()
 
         user_id = content.get("userId")
         conv_id = content.get("conversation_id")
@@ -427,7 +418,7 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
         )()
 
         user_to_remove = await database_sync_to_async(
-            User.objects.get
+            user.objects.get
         )(id=user_id)
 
         # IMPORTANT: store participants BEFORE removal for proper broadcasting

@@ -52,9 +52,7 @@ function getCookie(name: string): string | null {
 
 // Get or create reusable ML-KEM instance
 function getMlKem() {
-  if (!mlkemInstancePromise) {
-    mlkemInstancePromise = createMlKem768();
-  }
+  mlkemInstancePromise ??= createMlKem768();
 
   return mlkemInstancePromise;
 }

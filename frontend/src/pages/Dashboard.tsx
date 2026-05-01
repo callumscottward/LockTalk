@@ -41,11 +41,12 @@ function MessageBubbleText({
   msg,
   decryptMessage,
   activeConversationId,
-}: {
+}: Readonly<{
   msg: Message;
   decryptMessage: (id: string, content: any) => Promise<string>;
   activeConversationId: string | null;
-}) {
+}>
+) {
   const [decrypted, setDecrypted] = useState("");
 
   useEffect(() => {
@@ -885,7 +886,6 @@ export default function Messages() {
                   )}
                   <article
                     key={msg.id}
-                    tabIndex={0}
                     onMouseEnter={() => setHoveredMessageId(msg.id)}
                     onMouseLeave={() => setHoveredMessageId(null)}
                     onFocus={() => setHoveredMessageId(msg.id)}

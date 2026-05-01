@@ -12,13 +12,11 @@ User = get_user_model()
 class ChatConsumerTest(TransactionTestCase):
 
     def setUp(self):
-        # Create test user
         self.user = User.objects.create_user(
             username="testuser",
             password="password"
         )
 
-        # Create conversation + add participant
         self.conversation = Conversation.objects.create()
         self.conversation.participants.add(self.user)
 
@@ -46,18 +44,22 @@ class ChatConsumerTest(TransactionTestCase):
         connected, _ = await communicator.connect()
         self.assertTrue(connected)
 
-        # Send message
+        # Send message (must match consumer format exactly)
         await communicator.send_json_to({
-            "message": "Hello"
+            "message": "Hello",
+            "priority": "normal"
         })
 
-        # Receive websocket response
+        # Receive response
         response = await communicator.receive_json_from()
 
         self.assertEqual(response["type"], "chat_message")
         self.assertEqual(response["content"], "Hello")
+        self.assertEqual(response["sender_email"], self.user.email)
+        self.assertEqual(response["sender_name"], f"{self.user.first_name} {self.user.last_name}")
+        self.assertEqual(response["priority"], "normal")
 
-        # ✅ FIX: ORM access must be async-safe
+        # DB assertion (must be async-safe)
         message_count = await database_sync_to_async(Message.objects.count)()
         self.assertEqual(message_count, 1)
 

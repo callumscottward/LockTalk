@@ -67,11 +67,11 @@ export default function ChatDirectory() {
   []);
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this entire chat for everyone?")) {
+    if (!globalThis.confirm("Are you sure you want to delete this entire chat for everyone?")) {
       return;
     }
 
-    if (conversationSocketRef.current && conversationSocketRef.current.readyState === WebSocket.OPEN) {
+    if (conversationSocketRef.current?.readyState === WebSocket.OPEN) {
       conversationSocketRef.current.send(JSON.stringify({
       action: "delete_conversation",
       conversation_id: id
@@ -104,7 +104,7 @@ export default function ChatDirectory() {
       <div style={{ marginBottom: "20px", flexShrink: 0 }}>
         {/* Back Button */}
         <button 
-          onClick={() => window.location.href = "/Dashboard"} 
+          onClick={() => globalThis.location.href = "/Dashboard"} 
           style={{
             background: "none",
             border: "none",

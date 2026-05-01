@@ -70,7 +70,7 @@ export default function Logs() {
       <div style={{ marginBottom: "20px", flexShrink: 0 }}>
         {/* Back Button */}
         <button 
-          onClick={() => window.location.href = "/Dashboard"} 
+          onClick={() => globalThis.location.href = "/Dashboard"} 
           style={{
             background: "none",
             border: "none",

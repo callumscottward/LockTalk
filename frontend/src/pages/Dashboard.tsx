@@ -37,6 +37,45 @@ interface User {
   is_staff: boolean
 }
 
+function MessageBubbleText({
+  msg,
+  decryptMessage,
+  activeConversationId,
+}: {
+  msg: Message;
+  decryptMessage: (id: string, content: any) => Promise<string>;
+  activeConversationId: string | null;
+}) {
+  const [decrypted, setDecrypted] = useState("");
+
+  useEffect(() => {
+    if (!activeConversationId) return;
+
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        const text = await decryptMessage(
+          activeConversationId,
+          msg.encrypted_content
+        );
+
+        if (!cancelled) setDecrypted(text);
+      } catch {
+        if (!cancelled) setDecrypted("[Unable to decrypt message]");
+      }
+    };
+
+    run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeConversationId, msg.encrypted_content, decryptMessage]);
+
+  return <div>{decrypted}</div>;
+}
+
 function getCookie(name: string) {
   let cookieValue = null;
   if (document.cookie && document.cookie !== "") {
@@ -160,8 +199,8 @@ export default function Messages() {
 
   // Web Socket Effect that is used when adding a dealing with conversation 
   useEffect(() => {
-    const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const ws = new WebSocket(`${wsProtocol}://${window.location.host}/ws/conversations/`);
+    const wsProtocol = globalThis.location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${wsProtocol}://${globalThis.location.host}/ws/conversations/`);
     conversationsSocketRef.current = ws;
 
     ws.onmessage = (e) => {
@@ -251,8 +290,8 @@ export default function Messages() {
       socketRef.current.close();
     }
 
-    const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const ws = new WebSocket(`${wsProtocol}://${window.location.host}/ws/conversation/${activeConversationId}/`);
+    const wsProtocol = globalThis.location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${wsProtocol}://${globalThis.location.host}/ws/conversation/${activeConversationId}/`);
     socketRef.current = ws;
     setIsSocketReady(false);
 
@@ -322,42 +361,6 @@ export default function Messages() {
     });
   }, [activeConversationId, currentUserId]);
 
-  function MessageBubbleText({
-    msg,
-    decryptMessage,
-  }: Readonly<{
-    msg: Message;
-    decryptMessage: Function;
-  }>) {
-    const [decrypted, setDecrypted] = useState("");
-
-    useEffect(() => {
-      if (!activeConversationId)
-        return;
-
-      let cancelled = false;
-
-      const run = async () => {
-        try {
-          const text = await decryptMessage(activeConversationId, msg.encrypted_content);
-          if (!cancelled) setDecrypted(text);
-        } catch {
-          if (!cancelled) setDecrypted("[Unable to decrypt message]");
-        }
-      };
-
-      run();
-
-      return () => {
-        cancelled = true;
-      };
-    }, [activeConversationId, msg.encrypted_content]);
-
-    return (
-      <div>{decrypted}</div>
-    );
-  }
-
   // Send message via WebSocket
   const handleSendMessage = async () => {
     if (!messageInput.trim() || !socketRef.current || !activeConversationId) return;
@@ -409,7 +412,7 @@ export default function Messages() {
   };
 
   const handleDeleteMessage = (messageId: number) => {
-    if (!window.confirm("Delete this message?")) return;
+    if (!globalThis.confirm("Delete this message?")) return;
 
     socketRef.current?.send(JSON.stringify({
       action: "delete_message",
@@ -418,7 +421,7 @@ export default function Messages() {
   };
 
   const handleDeleteConversation = (convId: string) => {
-    if (!window.confirm("Delete this entire conversation?")) return;
+    if (!globalThis.confirm("Delete this entire conversation?")) return;
 
     conversationsSocketRef.current?.send(JSON.stringify({
       action: "delete_conversation",
@@ -429,7 +432,7 @@ export default function Messages() {
   const handleRemoveMember = (userId: number) => {
     if (!activeChat || !conversationsSocketRef.current) return;
 
-    if (!window.confirm("Remove this member from the group?")) return;
+    if (!globalThis.confirm("Remove this member from the group?")) return;
 
     conversationsSocketRef.current.send(JSON.stringify({
       action: "remove_member",
@@ -464,7 +467,7 @@ export default function Messages() {
         throw new Error("Logout failed");
       }
 
-      window.location.href = "/Login";
+      globalThis.location.href = "/Login";
     } catch (err) {
       console.error("Logout error:", err);
     }
@@ -829,13 +832,13 @@ export default function Messages() {
                 overflow: "hidden"
               }}
               >
-                <button style={menuItemStyle} onClick={() => window.location.href = "/UserProfile"}>User Profile</button>
+                <button style={menuItemStyle} onClick={() => globalThis.location.href = "/UserProfile"}>User Profile</button>
 
                 {currentUser?.is_staff && (
                   <>
-                    <button style={menuItemStyle} onClick={() => window.location.href = "/UserManagement"}>User Management</button>
-                    <button style={menuItemStyle} onClick={() => window.location.href = "/Logs"}>Logs</button>
-                    <button style={menuItemStyle} onClick={() => window.location.href = "/ChatDirectory"}>Chat Directory</button>
+                    <button style={menuItemStyle} onClick={() => globalThis.location.href = "/UserManagement"}>User Management</button>
+                    <button style={menuItemStyle} onClick={() => globalThis.location.href = "/Logs"}>Logs</button>
+                    <button style={menuItemStyle} onClick={() => globalThis.location.href = "/ChatDirectory"}>Chat Directory</button>
                   </>
                 )}
 
@@ -880,9 +883,8 @@ export default function Messages() {
                       {formatDateLabel(new Date(msg.timestamp || "").toLocaleDateString())}
                     </div>
                   )}
-                  <div
+                  <article
                     key={msg.id}
-                    role="article"
                     tabIndex={0}
                     onMouseEnter={() => setHoveredMessageId(msg.id)}
                     onMouseLeave={() => setHoveredMessageId(null)}
@@ -920,7 +922,11 @@ export default function Messages() {
                     >
 
                       {/* Function to decrypt and display text to avoid storing plaintext */}
-                      <MessageBubbleText msg={msg} decryptMessage={decryptMessage} />
+                      <MessageBubbleText
+                        msg={msg}
+                        decryptMessage={decryptMessage}
+                        activeConversationId={activeConversationId}
+                      />
 
                       <div style={{ fontSize: "10px", opacity: 0.7 }}>
                         {new Date(msg.timestamp || "").toLocaleTimeString()}
@@ -951,7 +957,7 @@ export default function Messages() {
                           </button>
                         )}
                     </div>
-                  </div>
+                  </article>
                 </Fragment>
               );
             })

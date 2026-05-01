@@ -31,20 +31,6 @@ class ConversationSerializer(serializers.ModelSerializer):
         model = Conversation
         fields = ["id", "name", "is_group", "participants", "moderator", "last_msg", "time"]
 
-    """def get_name(self, obj):
-        if obj.is_group:
-            return obj.name or f"Group {obj.id.hex[:4]}"
-        
-        # Safe check for request context
-        request = self.context.get("request")
-        if not request or not request.user.is_authenticated:
-            return "Private Chat"
-
-        # Find the person who isn't the current user
-        other = obj.participants.exclude(id=request.user.id).first()
-        return other.username if other else "Unknown User"
-        #return other.name if other else "Unknown User"*/ """
-
     def get_last_msg(self, obj):
         # We use .content because that's what is in your Message model
         last = obj.messages.order_by("-created_at").first()

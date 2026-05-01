@@ -61,7 +61,7 @@ function Login() {
 
     if (data.success) {
       setMessage(data.message);
-      window.location.href = "/dashboard";
+      globalThis.location.href = "/dashboard";
     } else {
       setMessage(data.message);
       setCooldown(3);

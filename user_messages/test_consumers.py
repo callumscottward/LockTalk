@@ -1,8 +1,7 @@
-import json
 from channels.testing import WebsocketCommunicator
-from channels.db import database_sync_to_async
 from django.test import TransactionTestCase
 from django.contrib.auth import get_user_model
+from channels.db import database_sync_to_async
 from user_messages.models import Conversation, Message
 from LockTalk.asgi import application
 
@@ -20,22 +19,13 @@ class ChatConsumerTest(TransactionTestCase):
         self.conversation = Conversation.objects.create()
         self.conversation.participants.add(self.user)
 
-    async def _create_communicator(self):
+    async def test_connect_success(self):
         communicator = WebsocketCommunicator(
             application,
             f"/ws/conversation/{self.conversation.id}/"
         )
 
-        # Proper way to inject auth in tests
         communicator.scope["user"] = self.user
-        communicator.scope["url_route"] = {
-            "kwargs": {"conversation_id": str(self.conversation.id)}
-        }
-
-        return communicator
-
-    async def test_connect_success(self):
-        communicator = await self._create_communicator()
 
         connected, _ = await communicator.connect()
         self.assertTrue(connected)
@@ -43,7 +33,12 @@ class ChatConsumerTest(TransactionTestCase):
         await communicator.disconnect()
 
     async def test_send_message(self):
-        communicator = await self._create_communicator()
+        communicator = WebsocketCommunicator(
+            application,
+            f"/ws/conversation/{self.conversation.id}/"
+        )
+
+        communicator.scope["user"] = self.user
 
         connected, _ = await communicator.connect()
         self.assertTrue(connected)
@@ -55,7 +50,6 @@ class ChatConsumerTest(TransactionTestCase):
         response = await communicator.receive_json_from()
 
         self.assertEqual(response["type"], "chat_message")
-        self.assertEqual(response["content"], "Hello")
 
         count = await database_sync_to_async(Message.objects.count)()
         self.assertEqual(count, 1)

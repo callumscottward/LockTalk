@@ -61,8 +61,8 @@ describe("UserManagement Page", () => {
     render(<UserManagement />);
 
     await waitFor(() => {
-      expect(screen.getByText("Admin")).toBeInTheDocument();
-      expect(screen.getByText("User")).toBeInTheDocument();
+      expect(screen.getByText("admin")).toBeInTheDocument();
+      expect(screen.getByText("user")).toBeInTheDocument();
     });
   });
 

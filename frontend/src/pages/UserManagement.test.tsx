@@ -61,8 +61,8 @@ describe("UserManagement Page", () => {
     render(<UserManagement />);
 
     await waitFor(() => {
-      expect(screen.getByText("admin")).toBeInTheDocument();
-      expect(screen.getByText("viewer")).toBeInTheDocument();
+      expect(screen.getByText("Admin")).toBeInTheDocument();
+      expect(screen.getByText("User")).toBeInTheDocument();
     });
   });
 
@@ -70,8 +70,8 @@ describe("UserManagement Page", () => {
     render(<UserManagement />);
 
     await waitFor(() => {
-      expect(screen.getByText("active")).toBeInTheDocument();
-      expect(screen.getByText("inactive")).toBeInTheDocument();
+      expect(screen.getByText("Active")).toBeInTheDocument();
+      expect(screen.getByText("Inactive")).toBeInTheDocument();
     });
   });
 

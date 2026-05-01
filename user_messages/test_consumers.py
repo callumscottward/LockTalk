@@ -3,36 +3,29 @@ from channels.testing import WebsocketCommunicator
 from django.test import TransactionTestCase
 from django.contrib.auth import get_user_model
 from user_messages.models import Conversation, Message
-from LockTalk.asgi import application
-from types import SimpleNamespace
-from channels.db import database_sync_to_async
+from locktalk.asgi import application
 
 User = get_user_model()
 
 
 class ChatConsumerTest(TransactionTestCase):
 
-    def SetUp(self):
-        self.user = User.objects.create_user(
+    async def test_connect_success(self):
+
+        user = User.objects.create_user(
             username="testuser",
             password="password"
         )
 
-        self.conversation = Conversation.objects.create()
-        self.conversation.participants.add(self.user)
+        conversation = Conversation.objects.create()
+        conversation.participants.add(user)
 
-    def fake_request(self):
-        # Minimal DRF-compatible request object
-        return SimpleNamespace(user=self.user)
-
-    async def test_connect_success(self):
         communicator = WebsocketCommunicator(
             application,
-            f"/ws/conversation/{self.conversation.id}/"
+            f"/ws/conversation/{conversation.id}/"
         )
 
-        communicator.scope["user"] = self.user
-        communicator.scope["request"] = self.fake_request()
+        communicator.scope["user"] = user
 
         connected, _ = await communicator.connect()
         self.assertTrue(connected)
@@ -40,13 +33,21 @@ class ChatConsumerTest(TransactionTestCase):
         await communicator.disconnect()
 
     async def test_send_message(self):
-        communicator = WebsocketCommunicator(
-            application,
-            f"/ws/conversation/{self.conversation.id}/"
+
+        user = User.objects.create_user(
+            username="testuser",
+            password="password"
         )
 
-        communicator.scope["user"] = self.user
-        communicator.scope["request"] = self.fake_request()
+        conversation = Conversation.objects.create()
+        conversation.participants.add(user)
+
+        communicator = WebsocketCommunicator(
+            application,
+            f"/ws/conversation/{conversation.id}/"
+        )
+
+        communicator.scope["user"] = user
 
         connected, _ = await communicator.connect()
         self.assertTrue(connected)

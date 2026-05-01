@@ -11,20 +11,6 @@ import {
   restoreConversationKey,
 } from '../utilities/MessageCryptography';
 
-/**
- * @name Dashboard
- * ## Dashboard Compoenent
- * This serves as the main "homepage" of the application,
- * where users can check messages in conversations they're
- * members of, create new conversations, modify existing ones,
- * and route to other menus of the application such as User
- * Management or (if the user is an admin) Logs and the
- * Chat Directory. If the user is logged in on their browser
- * instance, this is also where the root URL navigates to.
- * @category Pages
- * @returns The primary application dashboard site.
- */
-
 interface Conversation {
   id: string;
   name: string;
@@ -52,6 +38,15 @@ interface User {
   is_staff: boolean
 }
 
+/**
+ * @remarks
+ * This helper function gets the value of a provided cookie
+ * from browser storage, which in this case can be used for
+ * browser-based authentication or any other desired cookie values.
+ * @param name - The name of the cookie property to fetch
+ * @returns The value of the cookie
+ */
+
 function getCookie(name: string) {
   let cookieValue = null;
   if (document.cookie && document.cookie !== "") {
@@ -66,6 +61,20 @@ function getCookie(name: string) {
   }
   return cookieValue;
 }
+
+/**
+ * @name Messages
+ * ## Dashboard Component
+ * This serves as the main "homepage" of the application,
+ * where users can check messages in conversations they're
+ * members of, create new conversations, modify existing ones,
+ * and route to other menus of the application such as User
+ * Management or (if the user is an admin) Logs and the
+ * Chat Directory. If the user is logged in on their browser
+ * instance, this is also where the root URL navigates to.
+ * @category Pages
+ * @returns The primary application dashboard site.
+ */
 
 export default function Messages() {
   const [conversations, setConversations] = useState<Conversation[]>([]);

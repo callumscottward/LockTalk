@@ -2,6 +2,12 @@ import { render, screen, within } from "@testing-library/react";
 import UserManagement from "./UserManagement";
 import { vi } from "vitest";
 
+/**
+ * @mock fetch
+ * @description
+ * Mock API response for user management data.
+ * Simulates backend returning a list of users for admin dashboard display.
+ */
 beforeEach(() => {
   global.fetch = vi.fn(() =>
     Promise.resolve({
@@ -28,12 +34,32 @@ beforeEach(() => {
   );
 });
 
+/**
+ * @cleanup
+ * @description Restores mocked fetch after each test to prevent test leakage
+ */
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
+
+/**
+ * @name UserManagement Tests
+ * @description
+ * Unit tests for the UserManagement admin page component.
+ *
+ * These tests verify:
+ * User table renders correctly
+ * User data is displayed properly in rows
+ * Role labels (Admin/User) are computed and rendered correctly
+ * Active/Inactive status badges are displayed correctly
+ */
 describe("UserManagement Page", () => {
 
+  /**
+   * @test renders user table
+   * @description Ensures that the user management table is rendered on page load
+   */
   test("renders user table", async () => {
     render(<UserManagement />);
 
@@ -42,6 +68,10 @@ describe("UserManagement Page", () => {
     expect(tables[1]).toBeInTheDocument();
   });
 
+  /**
+   * @test renders user rows correctly
+   * @description Ensures user data is correctly rendered into table rows
+   */
   test("renders user rows correctly", async () => {
     render(<UserManagement />);
 
@@ -56,6 +86,10 @@ describe("UserManagement Page", () => {
     expect(within(bodyTable).getByText("Bob")).toBeInTheDocument();
   });
 
+  /**
+   * @test renders role labels correctly
+   * @description Ensures user roles (Admin/User) are correctly derived from is_staff field
+   */
   test("renders role labels correctly", async () => {
     render(<UserManagement />);
 
@@ -66,6 +100,10 @@ describe("UserManagement Page", () => {
     expect(within(bodyTable).getByText("User")).toBeInTheDocument();
   });
 
+  /**
+   * @test renders active/inactive badges correctly
+   * @description Ensures user active state is correctly displayed in UI badges
+   */
   test("renders active/inactive badges correctly", async () => {
     render(<UserManagement />);
 

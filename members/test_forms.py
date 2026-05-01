@@ -3,8 +3,12 @@ from members.forms import CustomUserCreationForm
 from django.contrib.auth.models import User
 
 
+## @class CustomUserCreationFormTest
+# @brief Tests custom user registration form validation and user creation
 class CustomUserCreationFormTest(TestCase):
 
+    ## @brief Tests valid form submission
+    #  @details Ensures form accepts valid user input and passes validation
     def test_valid_form(self):
         form_data = {
             "first_name": "John",
@@ -18,7 +22,8 @@ class CustomUserCreationFormTest(TestCase):
 
         self.assertTrue(form.is_valid())
 
-
+    ## @brief Tests password mismatch validation
+    #  @details Ensures form rejects mismatched passwords and returns error on password2
     def test_password_mismatch(self):
         form_data = {
             "first_name": "John",
@@ -33,7 +38,8 @@ class CustomUserCreationFormTest(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn("password2", form.errors)
 
-
+    ## @brief Tests required field validation
+    #  @details Ensures missing required fields cause form validation to fail
     def test_missing_required_fields(self):
         form = CustomUserCreationForm(data={})
 
@@ -41,7 +47,8 @@ class CustomUserCreationFormTest(TestCase):
         self.assertIn("email", form.errors)
         self.assertIn("first_name", form.errors)
 
-
+    ## @brief Tests saving a valid form creates a user
+    #  @details Ensures form.save() correctly creates and stores a user in the database
     def test_save_creates_user(self):
         form_data = {
             "first_name": "Jane",

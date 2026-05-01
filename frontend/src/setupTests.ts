@@ -39,4 +39,4 @@ class MockWebSocket {
   removeEventListener = vi.fn();
 }
 
-global.WebSocket = MockWebSocket as any;
+globalThis.WebSocket = MockWebSocket as any;

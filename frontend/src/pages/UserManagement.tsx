@@ -21,7 +21,6 @@ interface User {
 export default function UserManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [users, setUsers] = useState<User[]>([]);
-  const [, setLoading] = useState(true);
 
   // All the users since it is admin view
   useEffect(() => {
@@ -34,8 +33,6 @@ export default function UserManagement() {
         setUsers(data);
       } catch (err) {
         console.error("Failed to load users:", err);
-      } finally {
-        setLoading(false);
       }
     };
     fetchUsers();

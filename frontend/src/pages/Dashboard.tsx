@@ -38,15 +38,6 @@ interface User {
   is_staff: boolean
 }
 
-/**
- * @remarks
- * This helper function gets the value of a provided cookie
- * from browser storage, which in this case can be used for
- * browser-based authentication or any other desired cookie values.
- * @param name - The name of the cookie property to fetch
- * @returns The value of the cookie
- */
-
 function getCookie(name: string) {
   let cookieValue = null;
   if (document.cookie && document.cookie !== "") {

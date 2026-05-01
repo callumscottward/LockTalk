@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import UserManagement from "./UserManagement";
 import { vi } from "vitest";
 
@@ -50,29 +50,30 @@ describe("UserManagement Page", () => {
 
     const rows = within(bodyTable).getAllByRole("row");
 
-    // ONLY data rows exist (no header inside tbody table)
     expect(rows.length).toBe(2);
 
-    expect(screen.getByText("Alice")).toBeInTheDocument();
-    expect(screen.getByText("Bob")).toBeInTheDocument();
+    expect(within(bodyTable).getByText("Alice")).toBeInTheDocument();
+    expect(within(bodyTable).getByText("Bob")).toBeInTheDocument();
   });
 
   test("renders role labels correctly", async () => {
     render(<UserManagement />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Admin")).toBeInTheDocument();
-      expect(screen.getByText("User")).toBeInTheDocument();
-    });
+    const tables = await screen.findAllByRole("table");
+    const bodyTable = tables[1];
+
+    expect(within(bodyTable).getByText("Admin")).toBeInTheDocument();
+    expect(within(bodyTable).getByText("User")).toBeInTheDocument();
   });
 
   test("renders active/inactive badges correctly", async () => {
     render(<UserManagement />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Active")).toBeInTheDocument();
-      expect(screen.getByText("Inactive")).toBeInTheDocument();
-    });
+    const tables = await screen.findAllByRole("table");
+    const bodyTable = tables[1];
+
+    expect(within(bodyTable).getByText("Active")).toBeInTheDocument();
+    expect(within(bodyTable).getByText("Inactive")).toBeInTheDocument();
   });
 
 });

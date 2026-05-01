@@ -1,10 +1,13 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { vi, beforeEach, describe, test, expect } from 'vitest';
 import App from './App';
 
 describe('App Routing & Auth', () => {
   beforeEach(() => {
-    global.fetch = jest.fn(() =>
+    vi.resetAllMocks();
+
+    global.fetch = vi.fn(() =>
       Promise.resolve({
         ok: true,
         json: () =>
@@ -13,7 +16,7 @@ describe('App Routing & Auth', () => {
             is_staff: true,
           }),
       })
-    ) as jest.Mock;
+    ) as any;
   });
 
   test('calls verify-staff on load', async () => {
@@ -26,28 +29,32 @@ describe('App Routing & Auth', () => {
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
         '/api/verify-staff/',
-        expect.any(Object)
+        expect.objectContaining({
+          credentials: 'include',
+        })
       );
     });
   });
 
-  test('renders login route', () => {
+  test('renders login route', async () => {
     render(
       <MemoryRouter initialEntries={['/login']}>
         <App />
       </MemoryRouter>
     );
 
-    expect(screen.getByText(/login/i)).toBeInTheDocument();
+    // Wait for Login component to actually render something
+    // (adjust this based on your Login UI)
+    expect(await screen.findByRole('heading', { name: /login/i })).toBeInTheDocument();
   });
 
-  test('renders signup route', () => {
+  test('renders signup route', async () => {
     render(
       <MemoryRouter initialEntries={['/signup']}>
         <App />
       </MemoryRouter>
     );
 
-    expect(screen.getByText(/signup/i)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /signup/i })).toBeInTheDocument();
   });
 });

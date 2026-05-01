@@ -1,7 +1,10 @@
 from django.db import models
 from django.conf import settings
+from django.contrib.auth import get_user_model
 import uuid
 from django.utils import timezone
+
+User = get_user_model()
 
 class Conversation(models.Model):
     #Unique, randomly generated 128 but number that will be used to be more secure
@@ -32,6 +35,15 @@ class Conversation(models.Model):
 
     retention_days = models.IntegerField(null=True, blank=True)
 
+class ConversationKey(models.Model):
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE)
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE)
+    kem_ciphertext = models.JSONField()
+    encrypted_conversation_key = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("conversation", "recipient")
 
 class Message(models.Model):
     class MessageType(models.TextChoices):

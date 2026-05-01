@@ -1,5 +1,15 @@
 import React from 'react';
 import { useState, useEffect, useRef } from 'react';
+import {
+  encryptMessage,
+  decryptMessage,
+  receiveKemHandshake,
+  createKemHandshake,
+  getRecipientPublicKey,
+  initializeMyKemKeys,
+  hasConversationKey,
+  restoreConversationKey,
+} from '../utilities/MessageCryptography';
 
 interface Conversation {
   id: string;
@@ -41,35 +51,6 @@ function getCookie(name: string) {
     }
   }
   return cookieValue;
-}
-
-function MessageBubbleText({
-  msg,
-  decryptMessage,
-}: Readonly<{
-  msg: Message;
-  decryptMessage: (m: Message["encrypted_content"]) => Promise<string>;
-}>) {
-  const [decrypted, setDecrypted] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const run = async () => {
-      const text = await decryptMessage(msg.encrypted_content);
-      if (!cancelled) setDecrypted(text);
-    };
-
-    run();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [msg.encrypted_content]);
-
-  return (
-    <div>{decrypted}</div>
-  );
 }
 
 export default function Messages() {
@@ -132,6 +113,19 @@ export default function Messages() {
       }
     };
     fetchUser();
+  }, []);
+
+  // Initialize active user's public and private ML-KEM keys
+  useEffect(() => {
+    const initKem = async () => {
+      try {
+        await initializeMyKemKeys();
+      } catch (err) {
+        console.error("Failed to initialize KEM keys:", err);
+      }
+    };
+
+    initKem();
   }, []);
 
   // Fetch conversations once you reach the dashboard website
@@ -263,6 +257,18 @@ export default function Messages() {
 
     ws.onmessage = async (e) => {
       const data = JSON.parse(e.data);
+      if (data.type === "kem_handshake") {        
+        if (!currentUserIdRef.current) return;
+        
+        await receiveKemHandshake(
+          data.conversationId,
+          currentUserIdRef.current,
+          data.wrappedKeys
+        );
+
+        return;
+      }
+      
       if (data.type === "chat_message") {
         setMessages(prev => [
           ...prev,
@@ -301,61 +307,99 @@ export default function Messages() {
     };
   }, [activeConversationId, currentUserEmail]);
 
-  // Get the key message encryption will use (hardcoded for now)
-  const getKey = async () => {
-    const enc = new TextEncoder();
-    return crypto.subtle.importKey(
-      "raw",
-      enc.encode("temporary_test_key_1234567891011"),
-      { name: "AES-GCM" },
-      false,
-      ["encrypt", "decrypt"]
+  useEffect(() => {
+    if (!activeConversationId || !currentUserId) return;
+
+    // Restore conversation key in case of refresh
+    restoreConversationKey(activeConversationId, currentUserId).catch(err => {
+      console.warn("Could not restore conversation key:", err);
+    });
+  }, [activeConversationId, currentUserId]);
+
+  function MessageBubbleText({
+    msg,
+    decryptMessage,
+  }: Readonly<{
+    msg: Message;
+    decryptMessage: Function;
+  }>) {
+    if (!activeConversationId)
+      return null;
+
+    const [decrypted, setDecrypted] = useState("");
+
+    useEffect(() => {
+      let cancelled = false;
+
+      const run = async () => {
+        try {
+          const text = await decryptMessage(activeConversationId, msg.encrypted_content);
+          if (!cancelled) setDecrypted(text);
+        } catch {
+          if (!cancelled) setDecrypted("[Unable to decrypt message]");
+        }
+      };
+
+      run();
+
+      return () => {
+        cancelled = true;
+      };
+    }, [activeConversationId, msg.encrypted_content]);
+
+    return (
+      <div>{decrypted}</div>
     );
-  };
-
-  // Encrypt messages before sending them
-  const encryptMessage = async (message: string) => {
-    const key = await getKey();
-    const enc = new TextEncoder();
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-
-    const ciphertext = await crypto.subtle.encrypt(
-      { name: "AES-GCM", iv },
-      key,
-      enc.encode(message)
-    );
-
-    return {
-      iv: Array.from(iv),
-      data: Array.from(new Uint8Array(ciphertext)),
-    };
-  };
-
-  // Decrypt received messages to be displayed in plaintext
-  const decryptMessage = async (message: { iv: Array<number>, data: Array<number> }) => {
-    const key = await getKey();
-    const decoder = new TextDecoder();
-
-    const { iv, data } = message;
-
-    const decrypted = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: new Uint8Array(iv) },
-      key,
-      new Uint8Array(data)
-    );
-
-    return decoder.decode(decrypted);
-  };
+  }
 
   // Send message via WebSocket
   const handleSendMessage = async () => {
-    if (!messageInput.trim() || !socketRef.current) return;
+    if (!messageInput.trim() || !socketRef.current || !activeConversationId) return;
+    
+    // Restore or initialize encryption key with ML-KEM if not yet established
+    if (!hasConversationKey(activeConversationId)) {
+      const restored = currentUserId
+        ? await restoreConversationKey(activeConversationId, currentUserId)
+        : false;
 
-    const encryptedMessage = await encryptMessage(messageInput);
+      if (!restored) {
+        const recipients = activeChat?.participants;
 
-    socketRef.current.send(JSON.stringify({ message: encryptedMessage, priority: messagePriority }));
-    setMessageInput("");
-    setMessagePriority("normal");
+        if (!recipients || recipients.length === 0) {
+          throw new Error("Could not determine conversation recipients for key generation");
+        }
+
+        const recipientKeys = await Promise.all(
+          recipients.map(async p => ({
+            id: p.id,
+            publicKey: await getRecipientPublicKey(p.id),
+          }))
+        );
+
+        const handshake = await createKemHandshake(
+          activeConversationId,
+          recipientKeys,
+        );
+
+        socketRef.current.send(JSON.stringify(handshake));
+      }
+    }
+
+    const encryptedMessage = await encryptMessage(activeConversationId, messageInput);
+
+    try {
+      socketRef.current.send(JSON.stringify({
+        type: "chat_message",
+        conversationId: activeConversationId,
+        message: encryptedMessage,
+        priority: messagePriority,
+      }));
+
+      setMessageInput("");
+      setMessagePriority("normal");
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
   };
 
   const handleDeleteMessage = (messageId: number) => {
@@ -399,11 +443,9 @@ export default function Messages() {
   };
 
   // const handleUpdateExpiration = () => {
-  //   // Logic goes here for the expriation date
+  //   // Logic goes here for the expiration date
   //   setIsSettingsDropdownOpen(false);
   // };
-
-
 
   const handleLogout = async () => {
     try {
@@ -614,7 +656,7 @@ export default function Messages() {
                 <span style={{ fontSize: "12px", color: "#555" }}>
                   {(() => {
                     const others = conv.participants
-                      .filter(p => p.username !== currentUserEmail) || [];
+                      .filter(p => p.id !== currentUserId) || [];
                     const maxDisplay = 3;
                     const displayed = others.slice(0, maxDisplay);
                     const remaining = others.length - displayed.length;

@@ -80,7 +80,13 @@ function openCryptoDb(): Promise<IDBDatabase> {
     };
 
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    request.onerror = () => {
+      reject(
+        new Error(
+          request.error?.message || "Request failed"
+        )
+      );
+    };
   });
 }
 
@@ -94,7 +100,13 @@ async function idbGet<T>(key: string): Promise<T | null> {
     const request = store.get(key);
 
     request.onsuccess = () => resolve(request.result ?? null);
-    request.onerror = () => reject(request.error);
+    request.onerror = () => {
+      reject(
+        new Error(
+          request.error?.message || "Request failed"
+        )
+      );
+    };
   });
 }
 
@@ -108,7 +120,13 @@ async function idbSet(key: string, value: unknown): Promise<void> {
     const request = store.put(value, key);
 
     request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
+    request.onerror = () => {
+      reject(
+        new Error(
+          request.error?.message || "Request failed"
+        )
+      );
+    };
   });
 }
 

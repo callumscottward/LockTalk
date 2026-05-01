@@ -257,9 +257,9 @@ export default function Messages() {
 
     ws.onmessage = async (e) => {
       const data = JSON.parse(e.data);
-      if (data.type === "kem_handshake") {        
+      if (data.type === "kem_handshake") {
         if (!currentUserIdRef.current) return;
-        
+
         await receiveKemHandshake(
           data.conversationId,
           currentUserIdRef.current,
@@ -268,7 +268,7 @@ export default function Messages() {
 
         return;
       }
-      
+
       if (data.type === "chat_message") {
         setMessages(prev => [
           ...prev,
@@ -323,10 +323,10 @@ export default function Messages() {
     msg: Message;
     decryptMessage: Function;
   }>) {
+    const [decrypted, setDecrypted] = useState("");
+
     if (!activeConversationId)
       return null;
-
-    const [decrypted, setDecrypted] = useState("");
 
     useEffect(() => {
       let cancelled = false;
@@ -355,7 +355,7 @@ export default function Messages() {
   // Send message via WebSocket
   const handleSendMessage = async () => {
     if (!messageInput.trim() || !socketRef.current || !activeConversationId) return;
-    
+
     // Restore or initialize encryption key with ML-KEM if not yet established
     if (!hasConversationKey(activeConversationId)) {
       const restored = currentUserId
@@ -598,10 +598,10 @@ export default function Messages() {
   const getPriorityBorder = (msg: Message) => {
     if (msg.priority === "highly_sensitive") {
       return "3px solid #ff4d4d"; // red outline
-  }
+    }
     if (msg.priority === "sensitive") {
       return "3px solid #ffa500"; // orange outline
-  }
+    }
     return "none";
   };
 
@@ -622,14 +622,13 @@ export default function Messages() {
           <p style={{ padding: "15px" }}>Loading...</p>
         ) : (
           conversations.map(conv => (
-            <div
+            <button
               key={conv.id}
-              // Mouse hovering
               onMouseEnter={() => setHoveredConvId(conv.id)}
               onMouseLeave={() => setHoveredConvId(null)}
               onClick={() => {
                 setActiveConversationId(conv.id);
-                currentConversationId.current = conv.id
+                currentConversationId.current = conv.id;
               }}
               style={{
                 padding: "12px",
@@ -638,10 +637,13 @@ export default function Messages() {
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                borderBottom: "1px solid #eee"
+                borderBottom: "1px solid #eee",
+                width: "100%",
+                border: "none",
+                textAlign: "left"
               }}
             >
-              {/* LEFT SIDE (column) */}
+              {/* LEFT SIDE */}
               <div
                 style={{
                   margin: "0 auto",
@@ -655,27 +657,29 @@ export default function Messages() {
 
                 <span style={{ fontSize: "12px", color: "#555" }}>
                   {(() => {
-                    const others = conv.participants
-                      .filter(p => p.id !== currentUserId) || [];
-                    const maxDisplay = 3;
-                    const displayed = others.slice(0, maxDisplay);
+                    const others = conv.participants.filter(
+                      p => p.id !== currentUserId
+                    ) || [];
+
+                    const displayed = others.slice(0, 3);
                     const remaining = others.length - displayed.length;
 
                     return (
                       <>
                         {displayed.map((p, idx) => (
                           <span key={p.id}>
-                            {p.username}{idx < displayed.length - 1 ? ", " : ""}
+                            {p.username}
+                            {idx < displayed.length - 1 ? ", " : ""}
                           </span>
                         ))}
-                        {remaining > 0 ? `, ...` : ""}
+                        {remaining > 0 ? ", ..." : ""}
                       </>
                     );
                   })()}
                 </span>
               </div>
 
-              {/* RIGHT SIDE (delete button) */}
+              {/* RIGHT SIDE */}
               {hoveredConvId === conv.id &&
                 (!conv.is_group || conv.moderator === currentUserId) && (
                   <button
@@ -695,7 +699,7 @@ export default function Messages() {
                     ✕
                   </button>
                 )}
-            </div>
+            </button>
           ))
         )}
       </div>
@@ -1015,7 +1019,7 @@ export default function Messages() {
             <h3>Manage Members</h3>
             {/* --- ADD MEMBER SECTION --- */}
             <div style={{ marginBottom: "20px", position: "relative" }}>
-              <label style={{ fontSize: "12px", fontWeight: "bold", color: "#666" }}>Add New Member</label>
+              <label htmlFor="new-member" style={{ fontSize: "12px", fontWeight: "bold", color: "#666" }}>Add New Member</label>
               <input
                 placeholder="Search by username..."
                 value={searchQuery}
@@ -1034,23 +1038,26 @@ export default function Messages() {
                     .filter(u => !activeChat.participants.some(p => p.username === u.username))
                     .filter(u => u.id !== currentUserId)
                     .map((user) => (
-                      <div
+                      <button
                         key={user.id}
-                        style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #eee" }}
+                        onClick={() => {
+                          handleAddMember(user.username);
+                          setSearchQuery("");
+                        }}
+                        style={{
+                          padding: "10px",
+                          cursor: "pointer",
+                          borderBottom: "1px solid #eee",
+                          background: "white",
+                          width: "100%",
+                          textAlign: "left",
+                          border: "none"
+                        }}
                         onMouseEnter={(e) => (e.currentTarget.style.background = "#f0f0f0")}
                         onMouseLeave={(e) => (e.currentTarget.style.background = "white")}
                       >
-                        <div
-                          key={user.id}
-                          onClick={() => {
-                            handleAddMember(user.username);
-                            setSearchQuery("");
-                          }}
-                          style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #eee" }}
-                        >
-                          {user.username}
-                        </div>
-                      </div>
+                        {user.username}
+                      </button>
                     ))}
                 </div>
               )}
@@ -1059,7 +1066,7 @@ export default function Messages() {
             <hr style={{ border: "none", borderTop: "1px solid #eee", margin: "15px 0" }} />
 
             {/* --- CURRENT MEMBERS LIST --- */}
-            <label style={{ fontSize: "12px", fontWeight: "bold", color: "#666" }}>Current Members</label>
+            <label htmlFor="current-member" style={{ fontSize: "12px", fontWeight: "bold", color: "#666" }}>Current Members</label>
             <div style={{ maxHeight: "150px", overflowY: "auto", marginTop: "5px" }}>
               {activeChat.participants.map(p => (
                 <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #eee", alignItems: "center" }}>
@@ -1096,7 +1103,7 @@ export default function Messages() {
             <div style={{ position: "relative", display: "flex", flexWrap: "wrap" }}>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "5px", marginBottom: "10px" }}>
                 {selectedUsers.map((username) => (
-                  <div
+                  <button
                     key={username}
                     onClick={() => toggleUser(username)}
                     style={{
@@ -1105,10 +1112,11 @@ export default function Messages() {
                       color: "white",
                       borderRadius: "15px",
                       cursor: "pointer",
+                      border: "none"
                     }}
                   >
                     {username} ✕
-                  </div>
+                  </button>
                 ))}
               </div>
               <input
@@ -1144,7 +1152,7 @@ export default function Messages() {
                   {users
                     .filter(u => u.id !== currentUserId)
                     .map((user) => (
-                      <div
+                      <button
                         key={user.id}
                         onClick={() => {
                           toggleUser(user.username);
@@ -1156,10 +1164,13 @@ export default function Messages() {
                           background: selectedUsers.includes(user.username)
                             ? "#ddd"
                             : "white",
+                          border: "none",
+                          textAlign: "left",
+                          width: "100%"
                         }}
                       >
                         {user.username}
-                      </div>
+                      </button>
                     ))}
                 </div>
               )}

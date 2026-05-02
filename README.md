@@ -6,16 +6,13 @@ Welcome to LockTalk, a project created by Brendan Farrell, Maddie Luth, Miah Mas
 
 # Release Notes
 
-## Milestone 4 Features
+## Milestone 5 Features
 
-- Chat moderators can add and remove users
-- Messages are sorted by date
-- Site supports hosting on HTTPS if certs and key are present locally
-- Logs get rotated weekly and automatically saved upon rotation
-- Account Admin role affects permissions, including access to Logs, User Management, and Chat Directory
-- Logging support added for deletion of conversations/messages and logging out
-- Brute force login attempts are met with a cooldown
-- Numerous UI tweaks to improve site appearance and cohesiveness
+- Message Priority can be adjusted (Normal, Sensitive, or Highly Sensitive)
+- User Management and Chat Directory screens for admins to manage chats and users
+- Complete backend and frontend testing
+- Post-quantum cryptography for encryption key transfer (ML-KEM)
+- Application accessible on AWS at https://locktalk.unomaha.community
 
 ---
 
